@@ -23,8 +23,9 @@ else
 	echo "Saved in ReReco/InputFiles/Run${1}.dat"
 
 	echo "***Creating JSON file***"
-	jsonline=`eval "sed -n -e 's/^.*${1}/\"${1}/p' ReReco/JSONFiles/test2018.json"`
+	jsonline=`eval "sed -n -e 's/^.*${1}/\"${1}/p' /eos/project/c/ctpps/Operations/DataExternalConditions/2018/test2018.json"`
 	echo "{${jsonline}}" | sed -n -e 's/,}/}/p' > "ReReco/JSONFiles/Run${1}.json"
+	echo "JSON File contains: ${jsonline}"
 	echo "Saved as ReReco/JSONFiles/Run${1}.json"
 
 	echo "***Setting up Input File for Efficiency Analysis***"

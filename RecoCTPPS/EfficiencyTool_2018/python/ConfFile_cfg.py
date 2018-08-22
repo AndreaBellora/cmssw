@@ -36,7 +36,7 @@ process.MessageLogger = cms.Service("MessageLogger",
     cout = cms.untracked.PSet( threshold = cms.untracked.string('ERROR'))
 )
 
-process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(100) )
+process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(5000000) )
 
 process.source = cms.Source("PoolSource",
     # replace 'myfile.root' with the source file you want to use

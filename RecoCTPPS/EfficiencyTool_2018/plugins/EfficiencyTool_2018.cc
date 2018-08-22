@@ -20,6 +20,7 @@
 #include <memory>
 #include <algorithm>
 #include <fstream>
+#include <exception>
 #include <boost/algorithm/string.hpp>
 
 #include "FWCore/Framework/interface/Frameworkfwd.h"
@@ -126,7 +127,7 @@ class EfficiencyTool_2018 : public edm::one::EDAnalyzer<edm::one::SharedResource
 
   int numberOfOvermatches = 0;
   int numberOfAttempts = 0;
-}
+};
 
 EfficiencyTool_2018::EfficiencyTool_2018(const edm::ParameterSet& iConfig){
   usesResource("TFileService");
@@ -416,11 +417,11 @@ void EfficiencyTool_2018::analyze(const edm::Event& iEvent, const edm::EventSetu
 #endif
 }
 
-void EfficiencyTool_2018::beginJob()
+void EfficiencyTool_2018::beginJob(){}
 
 void EfficiencyTool_2018::endJob(){
   outputFile_ = new TFile(outputFileName_.data(), "RECREATE");
-  std::cout<<"There have been found multiple matches for the same totemtrack " <<numberOfOvermatches << " times out of "<<numberOfAttempts << 
+  std::cout<<"There have been found multiple matches for the same track " <<numberOfOvermatches << " times out of "<<numberOfAttempts << 
   " (" << (((double)numberOfOvermatches)/numberOfAttempts)*100 << "%)" << std::endl;
   for(const auto & rpId :  romanPotIdVector_){
     uint32_t arm = rpId.arm();
@@ -461,18 +462,10 @@ void EfficiencyTool_2018::endJob(){
     TObjArray X0slices;
     TF1 *fGausX0 = new TF1("fGausX0","gaus",mapXmin,mapXmax);
     h2X0Correlation_[rpId]->FitSlicesY(fGausX0, 1, mapXbins, 1, "QNRG3", &X0slices);
-    ((TH1D*)X0slices[0])->Write();
-    ((TH1D*)X0slices[1])->Write();
-    ((TH1D*)X0slices[2])->Write();
-    ((TH1D*)X0slices[3])->Write();
     delete fGausX0;
     TObjArray Y0slices;
     TF1 *fGausY0 = new TF1("fGausX0","gaus",mapYmin,mapYmax);
     h2Y0Correlation_[rpId]->FitSlicesY(fGausY0, 1, mapYbins, 1, "QNRG3", &Y0slices);
-    ((TH1D*)Y0slices[0])->Write();
-    ((TH1D*)Y0slices[1])->Write();
-    ((TH1D*)Y0slices[2])->Write();
-    ((TH1D*)Y0slices[3])->Write();
     delete fGausX0;
     if(isCorrelationPlotEnabled){
       std::cout << "Fitting correlation with arm" << arm << "_st" << station << "_rp" << rp 
@@ -505,12 +498,37 @@ void EfficiencyTool_2018::endJob(){
         }
       }
     }
-    h2InterPotEfficiency_[rpId]->Write();
+    // h2InterPotEfficiency_[rpId]->Write();
+    h2BetterInterPotEfficiency_[rpId]->Write();
     h2InterPotEfficiencyError_[rpId]->Write();
     h2InterPotEfficiencyNormalization_[rpId]->Write();
-    h2BetterInterPotEfficiency_[rpId]->Write();
   }
 
+
+  for(const auto & rpId :  romanPotIdVector_){
+    uint32_t arm = rpId.arm();
+    uint32_t rp = rpId.rp();
+    uint32_t station = rpId.station();
+    std::string romanPotFolderName = Form("Arm%i_st%i_rp%i",arm,station,rp);
+    outputFile_->cd(romanPotFolderName.data());
+    for(int xBin=1; xBin<=mapXbins; ++xBin){
+      for(int yBin=1; yBin<=mapYbins; ++yBin){
+        std::map<uint32_t, float> planeEfficiency;
+        std::map<uint32_t, float> planeEfficiencyError;
+        for(const auto & plane : listOfPlanes_){
+          CTPPSPixelDetId planeId = CTPPSPixelDetId(rpId);
+          planeId.setPlane(plane);
+          planeEfficiency[plane] = h2EfficiencyMap_[planeId]->GetBinContent(xBin,yBin);
+          planeEfficiencyError[plane] = h2EfficiencyMap_[planeId]->GetBinError(xBin,yBin);
+        }
+        float efficiency = probabilityCalculation(planeEfficiency);
+        float efficiencyError = errorCalculation(planeEfficiency,planeEfficiencyError);
+        h2TrackEfficiencyMap_[rpId]->SetBinContent(xBin,yBin,efficiency);
+        h2TrackEfficiencyMap_[rpId]->SetBinError(xBin,yBin,efficiencyError);
+      }
+    }
+    h2TrackEfficiencyMap_[rpId]->Write();
+  }
   for(const auto & detId : detectorIdVector_){
     uint32_t arm = detId.arm();
     uint32_t rp = detId.rp();
@@ -528,37 +546,6 @@ void EfficiencyTool_2018::endJob(){
     h2EfficiencyNormalizationMap_[detId]->Write();
   }
 
-  for(const auto & rpId :  romanPotIdVector_){
-    uint32_t arm = rpId.arm();
-    uint32_t rp = rpId.rp();
-    uint32_t station = rpId.station();
-    std::string romanPotFolderName = Form("Arm%i_st%i_rp%i",arm,station,rp);
-    outputFile_->cd(romanPotFolderName.data());
-    for(int xBin=1; xBin<=mapXbins; ++xBin){
-      for(int yBin=1; yBin<=mapYbins; ++yBin){
-        std::map<uint32_t, float> planeEfficiency;
-        std::map<uint32_t, float> planeEfficiencyError;
-        float shiftedplanesefficiency = 1;
-        float notshiftedplanesefficiency = 1;
-        for(const auto & plane : listOfPlanes_){
-        CTPPSPixelDetId planeId = CTPPSPixelDetId(rpId);
-        planeId.setPlane(plane);
-        planeEfficiency[plane] = h2EfficiencyMap_[planeId]->GetBinContent(xBin,yBin);
-        planeEfficiencyError[plane] = h2EfficiencyMap_[planeId]->GetBinError(xBin,yBin);
-        if(isPlaneShiftedMap_[CTPPSPixelDetId(arm,station,rp,0)][plane])shiftedplanesefficiency *= planeEfficiency[plane];
-        else notshiftedplanesefficiency *= planeEfficiency[plane];
-        }
-        float efficiency = probabilityCalculation(planeEfficiency);
-        float efficiencyError = errorCalculation(planeEfficiency,planeEfficiencyError);
-        // if (xBin%10==0 && yBin%10==0){
-        //   std::cout << "\nEfficiency of ("<<xBin<<","<<yBin<<") = "<<efficiency <<std::endl;
-        // }
-        h2TrackEfficiencyMap_[rpId]->SetBinContent(xBin,yBin,efficiency);
-        h2TrackEfficiencyMap_[rpId]->SetBinError(xBin,yBin,efficiencyError);
-      }
-    }
-    h2TrackEfficiencyMap_[rpId]->Write();
-  }
   if(isCorrelationPlotEnabled) std::cout << "ATTENTION: Remember to insert the fitting parameters in the python configuration" << std::endl;
   outputFile_->Close();
 }
@@ -598,7 +585,7 @@ float EfficiencyTool_2018::probabilityNplanesBlind(const std::vector<uint32_t> &
   for( const auto & combination : planesExtractedAndNot){
     float combinationProbability = 1.;
     for(const auto & efficientPlane : combination.first){
-    combinationProbability*=planeEfficiency.at(efficientPlane);
+      combinationProbability*=planeEfficiency.at(efficientPlane);
     }
     for(const auto & notEfficientPlane : combination.second){
     combinationProbability*=(1.-planeEfficiency.at(notEfficientPlane));

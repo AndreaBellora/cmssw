@@ -14,7 +14,7 @@ process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_cff')
 process.load('FWCore.ParameterSet.Types')
 
 process.maxEvents = cms.untracked.PSet(
-        input = cms.untracked.int32(3000000),
+        input = cms.untracked.int32(5000000),
         )
 
 process.MessageLogger = cms.Service("MessageLogger",

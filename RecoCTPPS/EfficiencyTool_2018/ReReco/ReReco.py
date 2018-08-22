@@ -14,7 +14,7 @@ process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_cff')
 process.load('FWCore.ParameterSet.Types')
 
 process.maxEvents = cms.untracked.PSet(
-        input = cms.untracked.int32(100),
+        input = cms.untracked.int32(3000000),
         )
 
 process.MessageLogger = cms.Service("MessageLogger",
@@ -45,12 +45,12 @@ options.register('RunNumber',
 options.parseArguments()
 
 process.output = cms.OutputModule("PoolOutputModule",
-    fileName = cms.untracked.string('OutputFiles/Run319579.root'),
+    fileName = cms.untracked.string('OutputFiles/Run'+str(options.RunNumber)+'.root'),
     outputCommands = cms.untracked.vstring("drop *","keep CTPPS*_*_*_reRECO","keep *_RP*_*_*")
 )
 
 import FWCore.Utilities.FileUtils as FileUtils
-sourceFileList = 'InputFiles/Run319579.dat'
+sourceFileList = 'InputFiles/Run'+str(options.RunNumber)+'.dat'
 fileList = FileUtils.loadListFromFile (sourceFileList) 
 inputFiles = cms.untracked.vstring( *fileList)
 
@@ -61,7 +61,7 @@ process.source = cms.Source("PoolSource",
 
 
 import FWCore.PythonUtilities.LumiList as LumiList
-jsonFile = 'JSONFiles/Run319579.json'
+jsonFile = 'JSONFiles/Run'+str(options.RunNumber)+'.json'
 process.source.lumisToProcess = LumiList.LumiList(filename = jsonFile).getVLuminosityBlockRange()
 
 from Configuration.AlCa.GlobalTag import GlobalTag

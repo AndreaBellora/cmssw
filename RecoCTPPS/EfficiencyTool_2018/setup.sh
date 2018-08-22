@@ -27,7 +27,8 @@ else
 	echo "{${jsonline}}" | sed -n -e 's/,}/}/p' > "ReReco/JSONFiles/Run${1}.json"
 	echo "Saved as ReReco/JSONFiles/Run${1}.json"
 
-	echo "***Creating Input File for Efficiency Analysis***"
+	echo "***Setting up Input File for Efficiency Analysis***"
 	echo "file:$CMSSW_BASE/src/RecoCTPPS/EfficiencyTool_2018/ReReco/OutputFiles/Run${1}.root" > "InputFiles/Run${1}.dat"
 	echo "Saved as InputFiles/Run${1}.dat"
+	echo "Run: ./submitReReco.sh ${1}"
 fi

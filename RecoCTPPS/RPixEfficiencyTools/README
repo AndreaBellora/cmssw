@@ -3,25 +3,20 @@ RPixEfficiency
 Author: Andrea Bellora
 
 This tool produces some useful plots to quickly check PPS Tracking Efficiency.
-Download it from https://github.com/AndreaBellora/cmssw/tree/CMSSW_10_2_2_RPixEfficiency_dev
+It is available on: https://github.com/AndreaBellora/cmssw/tree/CMSSW_10_2_2_RPixEfficiency_dev
 
-WARNING
+!!!WARNING!!!
 CMS voms certificate and access to the ctpps eos directory is required to run the tool
 
 From RPixEfficiencyTools do:
 
-
-
-From the directory you want to create the CMSSW environment in do:
-
-cmsrel CMSSW_10_2_2 
-cd src
-cmsenv
-git cms-merge-topic AndreaBellora:CMSSW_10_2_2_RPixEfficiency_dev
-scram b
-cd RecoCTPPS/RPixEfficiencyTools
 voms-proxy-init -voms cms -rfc -out x509up_u93252
 ./setup.sh <run_number>
+
+
+This will setup the ReReco. Check that at least a dozen files are found and the JSONFile content looks like {"<run_number>": [[lumi1,lumi2],[lumi3,lumi4]]}.
+It doesn't matter if lumi intervals are repeated.
+
 ./submitReReco.sh <run_number>
 
 Wait until the job is finished (it can take several hours..).
@@ -37,4 +32,4 @@ This produces the efficiency plots. Check that the results are ok (i.e. not that
 If everything is ok run: ./cleanAndSave <run_number>
 
 Every job is set to send an email to the user once it's finished. The email should report that the job is "DONE" and not "EXITED". If this isn't the case, check in its logfiles and errorfiles the error that caused the job to fail. If it's due to problems while getting files from the server, just resubmit the job with its ./submit script.
-
+Multiple jobs can be run at the same time, as long as they operate on differen run numbers.

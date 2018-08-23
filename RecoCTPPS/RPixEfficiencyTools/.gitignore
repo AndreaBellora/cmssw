@@ -9,6 +9,6 @@
 !submitReReco.sh
 !setup.sh
 !ViewPlots.C
-!plugins/
-!python/
-!ReReco/ReReco.py
+!*.cc
+!*.py
+!*.xml

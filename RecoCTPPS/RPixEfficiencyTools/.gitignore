@@ -1,14 +1,3 @@
-# Ignore this file in this directory
-*
-# Except these files
-!.gitignore
-!cleanAndSave.sh
-!jobEfficiencyAnalysis.sh
-!jobReReco.sh
-!submitEfficiencyAnalysis.sh
-!submitReReco.sh
-!setup.sh
-!ViewPlots.C
-!*.cc
-!*.py
-!*.xml
+*Files
+core*
+x509up_u93252

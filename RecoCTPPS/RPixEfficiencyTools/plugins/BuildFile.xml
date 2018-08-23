@@ -1,0 +1,7 @@
+<use name="FWCore/Framework"/>
+<use name="FWCore/PluginManager"/>
+<use name="FWCore/ParameterSet"/>
+<use name="root"/>
+<use name="DataFormats/CTPPSDetId"/>
+<use name="DataFormats/CTPPSReco"/>
+<flags EDM_PLUGIN="1"/>

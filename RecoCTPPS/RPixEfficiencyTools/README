@@ -1,0 +1,14 @@
+RPixEfficiency
+
+Author: Andrea Bellora
+
+This tool produces some useful plots to quickly check PPS Tracking Efficiency.
+Download it from https://github.com/AndreaBellora/cmssw/tree/CMSSW_10_2_2_RPixEfficiency_dev
+
+WARNING
+CMS voms certificate and access to the ctpps eos directory is required to run the tool
+
+From the directory you want to create the CMSSW environment in do:
+
+cmsrel CMSSW_10_2_2 
+cd src

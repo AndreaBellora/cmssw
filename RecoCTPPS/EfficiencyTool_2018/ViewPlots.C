@@ -1,14 +1,12 @@
 #include <algorithm>
 #include <TH2D.h>
 #include <TFile.h>
+#include <TCanvas.h>
 
 void ViewPlots(Int_t RunNumber){
-	Int_t  screen_x, screen_y;
-	UInt_t screen_w, screen_h;
-	gVirtualX->GetWindowSize(gClient->GetRoot()->GetId(),screen_x,screen_y,screen_w,screen_h);
-	gVirtualX->GetWindowSize(gClient->GetRoot()->GetId(),screen_x,screen_y,screen_w,screen_h);//Black magic requires to do this twice
-	
-	
+	Int_t  screen_x=0, screen_y=0;
+	UInt_t screen_w=1920, screen_h=1080;
+
 	// cout<<screen_x<<" "<<screen_y<<" "<<screen_w<<" "<<screen_h<<endl;
 
 	TFile* inputFile = new TFile(Form("OutputFiles/Run%i.root",RunNumber));
@@ -25,9 +23,9 @@ void ViewPlots(Int_t RunNumber){
 	cCorrelation->Divide(2,2);
 	cPlaneEfficiency->Divide(6,4);
 
-	vector<Int_t> planes = {0,1,2,3,4,5};
-	vector<Int_t> arms = {0,1};
-	vector<Int_t> stations = {0,2};
+	std::vector<Int_t> planes{0,1,2,3,4,5};
+	std::vector<Int_t> arms{0,1};
+	std::vector<Int_t> stations{0,2};
 
 	Int_t mapPlotsPadNumber = 0;
 	Int_t correlationPlotsPadNumber = 0;

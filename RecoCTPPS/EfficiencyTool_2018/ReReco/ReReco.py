@@ -14,7 +14,7 @@ process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_cff')
 process.load('FWCore.ParameterSet.Types')
 
 process.maxEvents = cms.untracked.PSet(
-        input = cms.untracked.int32(5000000),
+        input = cms.untracked.int32(1000),
         )
 
 process.MessageLogger = cms.Service("MessageLogger",
@@ -45,7 +45,7 @@ options.register('RunNumber',
 options.parseArguments()
 
 process.output = cms.OutputModule("PoolOutputModule",
-    fileName = cms.untracked.string('OutputFiles/Run'+str(options.RunNumber)+'.root'),
+    fileName = cms.untracked.string('/eos/project/c/ctpps/subsystems/Pixel/RPixTracking/EfficiencyCalculation2018/ReRecoOutputTmp/Run'+str(options.RunNumber)+'.root'),
     outputCommands = cms.untracked.vstring("drop *","keep CTPPS*_*_*_reRECO","keep *_RP*_*_*")
 )
 

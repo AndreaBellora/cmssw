@@ -1,9 +1,9 @@
 // -*- C++ -*-
 //
-// Package:    RecoCTPPS/EfficiencyTool_2018
-// Class:      EfficiencyTool_2018
+// Package:    RecoCTPPS/RPixEfficiencyTools
+// Class:      RPixEfficiencyTools
 //
-/**\class EfficiencyTool_2018 EfficiencyTool_2018.cc RecoCTPPS/EfficiencyTool_2018/plugins/EfficiencyTool_2018.cc
+/**\class EfficiencyTool_2018 EfficiencyTool_2018.cc RecoCTPPS/RPixEfficiencyTools/plugins/EfficiencyTool_2018.cc
 
  Description: [one line class summary]
 
@@ -504,7 +504,23 @@ void EfficiencyTool_2018::endJob(){
     h2InterPotEfficiencyNormalization_[rpId]->Write();
   }
 
+  for(const auto & detId : detectorIdVector_){
+    uint32_t arm = detId.arm();
+    uint32_t rp = detId.rp();
+    uint32_t station = detId.station();
+    uint32_t plane = detId.plane();
+    std::string planeFolderName = Form("Arm%i_st%i_rp%i/Arm%i_st%i_rp%i_pl%i",arm,station,rp,arm,station,rp,plane);
+    // std::cout << "Creating directory for: " << planeFolderName << std::endl;
+    outputFile_->mkdir(planeFolderName.data());
+    // std::cout << "Created directory for: " << planeFolderName << std::endl;
+    outputFile_->cd(planeFolderName.data());
 
+    h2ModuleHitMap_[detId]->Write();
+    h2EfficiencyMap_[detId]->Divide(h2AuxEfficiencyMap_[detId], h2EfficiencyNormalizationMap_[detId],1.,1.,"B");
+    h2EfficiencyMap_[detId]->Write();
+    h2EfficiencyNormalizationMap_[detId]->Write();
+  }
+  
   for(const auto & rpId :  romanPotIdVector_){
     uint32_t arm = rpId.arm();
     uint32_t rp = rpId.rp();
@@ -528,22 +544,6 @@ void EfficiencyTool_2018::endJob(){
       }
     }
     h2TrackEfficiencyMap_[rpId]->Write();
-  }
-  for(const auto & detId : detectorIdVector_){
-    uint32_t arm = detId.arm();
-    uint32_t rp = detId.rp();
-    uint32_t station = detId.station();
-    uint32_t plane = detId.plane();
-    std::string planeFolderName = Form("Arm%i_st%i_rp%i/Arm%i_st%i_rp%i_pl%i",arm,station,rp,arm,station,rp,plane);
-    // std::cout << "Creating directory for: " << planeFolderName << std::endl;
-    outputFile_->mkdir(planeFolderName.data());
-    // std::cout << "Created directory for: " << planeFolderName << std::endl;
-    outputFile_->cd(planeFolderName.data());
-
-    h2ModuleHitMap_[detId]->Write();
-    h2EfficiencyMap_[detId]->Divide(h2AuxEfficiencyMap_[detId], h2EfficiencyNormalizationMap_[detId],1.,1.,"B");
-    h2EfficiencyMap_[detId]->Write();
-    h2EfficiencyNormalizationMap_[detId]->Write();
   }
 
   if(isCorrelationPlotEnabled) std::cout << "ATTENTION: Remember to insert the fitting parameters in the python configuration" << std::endl;

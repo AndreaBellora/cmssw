@@ -7,7 +7,7 @@ else
 	export CMSSW_BASE=`readlink -f ../../..`
 	echo ""
 	echo "*****Setting up for Run ${1}*****"
-	mkdir -p InputFiles OutputFiles LogFiles ReReco/JSONFiles ReReco/InputFiles ReReco/OutputFiles ReReco/LogFiles 
+	mkdir -p -v InputFiles OutputFiles LogFiles test/JSONFiles test/InputFiles test/OutputFiles test/LogFiles 
 	echo ""
 	echo "***Creating file list for ReReco***"
 	set=`eval dasgoclient -query=\"dataset run=${1}\" | grep -i /ZeroBias/.*/AOD`
@@ -20,24 +20,24 @@ else
 		echo "More than one dataset was found"
 		echo "Using dataset: ${set}"
 	fi
-	eval "dasgoclient -query=\"file dataset=${set} run=${1}\" > ReReco/InputFiles/Run${1}.dat"
-	fn=`eval "more ReReco/InputFiles/Run${1}.dat | wc -l"`
+	eval "dasgoclient -query=\"file dataset=${set} run=${1}\" > test/InputFiles/Run${1}.dat"
+	fn=`eval "more test/InputFiles/Run${1}.dat | wc -l"`
 	echo "ReReco input files were found: ${fn}"
-	echo "Saved in ReReco/InputFiles/Run${1}.dat"
+	echo "Saved in test/InputFiles/Run${1}.dat"
 	echo ""
 	echo "***Creating JSON file***"
 	jsonline=`eval "sed -n -e 's/^.*${1}/\"${1}/p' /eos/project/c/ctpps/Operations/DataExternalConditions/2018/test2018.json"`
-	echo "{${jsonline}}" | sed -n -e 's/,}/}/p' > "ReReco/JSONFiles/Run${1}.json"
+	echo "{${jsonline}}" | sed -n -e 's/,}/}/p' > "test/JSONFiles/Run${1}.json"
 	echo "JSON File contains:"
-	eval "more ReReco/JSONFiles/Run${1}.json"
-	echo "Saved as ReReco/JSONFiles/Run${1}.json"
+	eval "more test/JSONFiles/Run${1}.json"
+	echo "Saved as test/JSONFiles/Run${1}.json"
 	echo ""
 	echo "***Setting up Input File for Efficiency Analysis***"
-	echo "file:$CMSSW_BASE/src/RecoCTPPS/EfficiencyTool_2018/ReReco/OutputFiles/Run${1}.root" > "InputFiles/Run${1}.dat"
+	echo "file:$CMSSW_BASE/src/RecoCTPPS/RPixEfficiencyTools/test/OutputFiles/Run${1}.root" > "InputFiles/Run${1}.dat"
 	echo "Saved as InputFiles/Run${1}.dat"
 	echo ""
 	echo "***Setting up links to ReReco OutputFiles***"
-	eval "ln -s /eos/project/c/ctpps/subsystems/Pixel/RPixTracking/EfficiencyCalculation2018/ReRecoOutputTmp/Run${1}.root ReReco/OutputFiles/Run${1}.root"
+	eval "ln -s /eos/project/c/ctpps/subsystems/Pixel/RPixTracking/EfficiencyCalculation2018/ReRecoOutputTmp/Run${1}.root test/OutputFiles/Run${1}.root"
 	echo ""
 	echo "Run: ./submitReReco.sh ${1}"
 	echo ""

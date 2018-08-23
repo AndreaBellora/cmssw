@@ -5,8 +5,8 @@ then
 else
 	export CMSSW_BASE=${2}
 	export SCRAM_ARCH=slc6_amd64_gcc530
-	export X509_USER_PROXY=$CMSSW_BASE/src/RecoCTPPS/EfficiencyTool_2018/x509up_u93252
-	cd $CMSSW_BASE/src/RecoCTPPS/EfficiencyTool_2018/
+	export X509_USER_PROXY=$CMSSW_BASE/src/RecoCTPPS/RPixEfficiencyTools/x509up_u93252
+	cd $CMSSW_BASE/src/RecoCTPPS/RPixEfficiencyTools/
 	eval `scramv1 runtime -sh`
 	eval "cmsRun python/ConfFile_cfg.py sourceFileList=InputFiles/Run${1}.dat outputFileName=OutputFiles/Run${1}.root RunNumber=${1}"
 fi

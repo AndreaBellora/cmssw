@@ -1,0 +1,14 @@
+# Ignore this file in this directory
+*
+# Except these files
+!.gitignore
+!cleanAndSave.sh
+!jobEfficiencyAnalysis.sh
+!jobReReco.sh
+!submitEfficiencyAnalysis.sh
+!submitReReco.sh
+!setup.sh
+!ViewPlots.C
+!plugins/
+!python/
+!ReReco/ReReco.py

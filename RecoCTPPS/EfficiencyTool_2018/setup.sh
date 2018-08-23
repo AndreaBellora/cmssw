@@ -7,6 +7,7 @@ else
 	export CMSSW_BASE=`readlink -f ../../..`
 	echo ""
 	echo "*****Setting up for Run ${1}*****"
+	mkdir -p InputFiles OutputFiles LogFiles ReReco/JSONFiles ReReco/InputFiles ReReco/OutputFiles ReReco/LogFiles 
 	echo ""
 	echo "***Creating file list for ReReco***"
 	set=`eval dasgoclient -query=\"dataset run=${1}\" | grep -i /ZeroBias/.*/AOD`

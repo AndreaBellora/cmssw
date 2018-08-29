@@ -517,6 +517,7 @@ void EfficiencyTool_2018::endJob(){
 
     h2ModuleHitMap_[detId]->Write();
     h2EfficiencyMap_[detId]->Divide(h2AuxEfficiencyMap_[detId], h2EfficiencyNormalizationMap_[detId],1.,1.,"B");
+    h2EfficiencyMap_[detId]->SetMaximum(1.);
     h2EfficiencyMap_[detId]->Write();
     h2EfficiencyNormalizationMap_[detId]->Write();
   }

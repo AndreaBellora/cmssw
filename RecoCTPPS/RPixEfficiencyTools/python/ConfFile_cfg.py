@@ -43,12 +43,9 @@ process.source = cms.Source("PoolSource",
     fileNames = inputFiles
 )
 
-# *****JSON File not needed since the selection happens at ReReco level*****
-#Inserted to process lumisections from jsonfile
-# import FWCore.PythonUtilities.LumiList as LumiList
-# if options.jsonFile :
-#     print("Using JsonFile")
-#     process.source.lumisToProcess = LumiList.LumiList(filename = options.jsonFile).getVLuminosityBlockRange()
+import FWCore.PythonUtilities.LumiList as LumiList
+jsonFile = 'test/JSONFiles/Run'+str(options.RunNumber)+'.json'
+process.source.lumisToProcess = LumiList.LumiList(filename = jsonFile).getVLuminosityBlockRange()
 
 #WARNING: hardcoded magic numbers
 #Coefficients of the correlation relations, coming from fits with isCorrelationPlotEnabled=True, computed on Reference runs Pre/Post TS1/2

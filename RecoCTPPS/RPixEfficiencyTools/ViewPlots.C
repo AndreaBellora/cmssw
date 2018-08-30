@@ -1,8 +1,11 @@
 #include <algorithm>
-#include <ofstream>
+#include <fstream>
 #include <TH2D.h>
 #include <TFile.h>
 #include <TCanvas.h>
+#include <TString.h>
+
+void SavePlotWithName(TH2D* h2, TString s);
 
 void ViewPlots(Int_t RunNumber){
 	gStyle->SetPalette(1);
@@ -85,14 +88,21 @@ void ViewPlots(Int_t RunNumber){
 		for (const auto & station : stations){
 			mapPlotsPadNumber++;
 			cPixelHitmap->cd(mapPlotsPadNumber);
-			((TH2D*)inputFile->GetDirectory(Form("Arm%i_st%i_rp3",arm,station))->Get(Form("h2TrackHitDistribution_arm%i_st%i_rp3",arm,station)))->DrawCopy("colz");
+			TH2D* h2PixelHitmap = (TH2D*)inputFile->GetDirectory(Form("Arm%i_st%i_rp3",arm,station))->Get(Form("h2TrackHitDistribution_arm%i_st%i_rp3",arm,station));
+			h2PixelHitmap->SetNameTitle(Form("TrackHitDistribution_arm%i_st%i",arm,station),Form("TrackHitDistribution_arm%i_st%i",arm,station));
+			h2PixelHitmap->DrawCopy("colz");
 
 			cPixelInterPotEfficiency->cd(mapPlotsPadNumber);
-			((TH2D*)inputFile->GetDirectory(Form("Arm%i_st%i_rp3",arm,station))->Get(Form("h2BetterInterPotEfficiency_arm%i_st%i_rp3",arm,station)))->DrawCopy("colz");
-			
+			TH2D* h2InterPotEfficiency = (TH2D*)inputFile->GetDirectory(Form("Arm%i_st%i_rp3",arm,station))->Get(Form("h2BetterInterPotEfficiency_arm%i_st%i_rp3",arm,station));
+			h2InterPotEfficiency->SetNameTitle(Form("InterPotEfficiency_arm%i_st%i",arm,station),Form("InterPotEfficiency_arm%i_st%i",arm,station));
+			h2InterPotEfficiency->DrawCopy("colz");
+			SavePlotWithName(h2InterPotEfficiency,Form("OutputFiles/PlotsRun%i/Run%i_InterPotEfficiency_arm%i_st%i.png",RunNumber,RunNumber,arm,station));
+
 			cPixelTrackEfficiency->cd(mapPlotsPadNumber);
 			TH2D* h2TrackEfficiencyMap = (TH2D*)inputFile->GetDirectory(Form("Arm%i_st%i_rp3",arm,station))->Get(Form("h2TrackEfficiencyMap_arm%i_st%i_rp3",arm,station));
+			h2TrackEfficiencyMap->SetNameTitle(Form("TrackEfficiencyMap_arm%i_st%i",arm,station),Form("TrackEfficiencyMap_arm%i_st%i",arm,station));
 			h2TrackEfficiencyMap->DrawCopy("colz");
+			SavePlotWithName(h2TrackEfficiencyMap,Form("OutputFiles/PlotsRun%i/Run%i_TrackEfficiency_arm%i_st%i.png",RunNumber,RunNumber,arm,station));
 
 			Double_t avgEfficiency = 0;
 			Int_t counter=0;
@@ -100,30 +110,58 @@ void ViewPlots(Int_t RunNumber){
 			Int_t ybin = areaForAvgEfficiency[std::pair<Int_t,Int_t>(arm,station)].at(1);
 			Int_t hbin = areaForAvgEfficiency[std::pair<Int_t,Int_t>(arm,station)].at(2);
 			Int_t wbin = areaForAvgEfficiency[std::pair<Int_t,Int_t>(arm,station)].at(3);
-			for(auto & xPixel = xbin; xPixel <= xbin+wbin; xPixel++){
-				for(auto & yPixel = ybin-hbin; yPixel<=ybin+hbin; yPixel++){
+			for(Int_t xPixel = xbin; xPixel <= xbin+wbin; xPixel++){
+				for(Int_t yPixel = ybin-hbin; yPixel<=ybin+hbin; yPixel++){
 					++counter;
 					avgEfficiency+=h2TrackEfficiencyMap->GetBinContent(xPixel,yPixel);
 				}
 			}
 			avgEfficiency = avgEfficiency/((Double_t)counter);
-			std::cout << "The average efficiency on arm" << arm << "_station" << station << " is:" << " " << avgEfficiency;
+			std::cout << "The average efficiency on arm" << arm << "_station" << station << " is:" << " " << avgEfficiency << std::endl;
 			avgEfficiencyOutputFile << arm << " " << station << " " << avgEfficiency << "\n";
-			avgEfficiencyOutputFile.close();
-			std::cout << "Average efficiency data saved in " << Form("OutputFiles/avgEfficiency_Run%i.dat",RunNumber) << std::endl;
 			for (const auto & plane : planes){
 				planePlotsPadNumber++;
 				cPlaneEfficiency->cd(planePlotsPadNumber);
-				((TH2D*)inputFile->GetDirectory(Form("Arm%i_st%i_rp3",arm,station))->GetDirectory(Form("Arm%i_st%i_rp3_pl%i",arm,station,plane))->Get(Form("h2EfficiencyMap_arm%i_st%i_rp3_pl%i",arm,station,plane)))->DrawCopy("colz");
+				TH2D* h2PlaneEfficiency = (TH2D*)inputFile->GetDirectory(Form("Arm%i_st%i_rp3",arm,station))->GetDirectory(Form("Arm%i_st%i_rp3_pl%i",arm,station,plane))->Get(Form("h2EfficiencyMap_arm%i_st%i_rp3_pl%i",arm,station,plane));
+				h2PlaneEfficiency->SetNameTitle(Form("EfficiencyMap_arm%i_st%i_pl%i",arm,station,plane),Form("EfficiencyMap_arm%i_st%i_pl%i",arm,station,plane));
+				h2PlaneEfficiency->DrawCopy("colz");
 			}
 		}
 		correlationPlotsPadNumber++;
 		cCorrelation->cd(correlationPlotsPadNumber);
-		((TH2D*)inputFile->GetDirectory(Form("Arm%i_st0_rp3",arm))->Get(Form("h2X0Correlation_arm%i_st0_rp3",arm)))->DrawCopy("colz");
+		TH2D* h2X0Correlation = (TH2D*)inputFile->GetDirectory(Form("Arm%i_st0_rp3",arm))->Get(Form("h2X0Correlation_arm%i_st0_rp3",arm));
+		h2X0Correlation->SetNameTitle(Form("XCorrelation_arm%i",arm),Form("XCorrelation_arm%i",arm));
+		h2X0Correlation->DrawCopy("colz");
 		correlationPlotsPadNumber++;
 		cCorrelation->cd(correlationPlotsPadNumber);
-		((TH2D*)inputFile->GetDirectory(Form("Arm%i_st0_rp3",arm))->Get(Form("h2Y0Correlation_arm%i_st0_rp3",arm)))->DrawCopy("colz");
+		TH2D* h2Y0Correlation = (TH2D*)inputFile->GetDirectory(Form("Arm%i_st0_rp3",arm))->Get(Form("h2Y0Correlation_arm%i_st0_rp3",arm));
+		h2Y0Correlation->SetNameTitle(Form("YCorrelation_arm%i",arm),Form("YCorrelation_arm%i",arm));
+		h2Y0Correlation->DrawCopy("colz");
+
+		gROOT->SetBatch(kTRUE);
+		TCanvas* cCorrelationToSave = new TCanvas("cCorrelationToSave","Correlation Plots",screen_x,screen_y,screen_w,screen_h);
+		cCorrelationToSave->Divide(2);
+		cCorrelationToSave->cd(1);
+		h2X0Correlation->DrawCopy("colz");
+		cCorrelationToSave->cd(2);
+		h2Y0Correlation->DrawCopy("colz");
+		cCorrelationToSave->SaveAs(Form("OutputFiles/PlotsRun%i/Run%i_Correlation_arm%i.png",RunNumber,RunNumber,arm));
+		delete cCorrelationToSave;
+		gROOT->SetBatch(kFALSE);
 	}
+	avgEfficiencyOutputFile.close();
+	std::cout << "Average efficiency data saved in " << Form("OutputFiles/avgEfficiency_Run%i.dat",RunNumber) << std::endl;
 	inputFile->Close();
 	delete inputFile;
+}
+
+void SavePlotWithName(TH2D* h2, TString s){
+	Int_t  screen_x=0, screen_y=0;
+	UInt_t screen_w=1920, screen_h=1080;
+	gROOT->SetBatch(kTRUE);
+	TCanvas* c = new TCanvas("","",screen_x,screen_y,screen_w,screen_h);
+	h2->DrawCopy("colz");
+	c->SaveAs(s);
+	delete c;
+	gROOT->SetBatch(kFALSE);
 }

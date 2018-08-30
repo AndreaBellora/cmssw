@@ -356,10 +356,10 @@ void EfficiencyTool_2018::analyze(const edm::Event& iEvent, const edm::EventSetu
               g1Y0Correlation_[pixelRpId_PUT]->SetNameTitle(Form("g1Y0Correlation_arm%i_st%i_rp%i",arm_PUT,station_PUT,rp_PUT),
               Form("g1Y0Correlation_arm%i_st%i_rp%i;arm%i_st%i_rp%i y (mm);arm%i_st%i_rp%i y (mm)",arm_PUT,station_PUT,rp_PUT,arm,station,rp,arm_PUT,station_PUT,rp_PUT));
               h2X0Correlation_[pixelRpId_PUT] = new TH2D(Form("h2X0Correlation_arm%i_st%i_rp%i",arm_PUT,station_PUT,rp_PUT),
-              Form("h2X0Correlation_arm%i_st%i_rp%i;arm%i_st%i_rp%i x (mm);arm%i_st%i_rp%i x (mm)",arm_PUT,station_PUT,rp_PUT,arm,station,rp,arm_PUT,station_PUT,rp_PUT),
+              Form("h2X0Correlation_arm%i_st%i_rp%i;arm%i_st%i x (mm);arm%i_st%i x (mm)",arm_PUT,station_PUT,rp_PUT,arm,station,arm_PUT,station_PUT),
               mapXbins,mapXmin,mapXmax,mapXbins_PUT,mapXmin_PUT,mapXmax_PUT);
               h2Y0Correlation_[pixelRpId_PUT] = new TH2D(Form("h2Y0Correlation_arm%i_st%i_rp%i",arm_PUT,station_PUT,rp_PUT),
-              Form("h2Y0Correlation_arm%i_st%i_rp%i;arm%i_st%i_rp%i y (mm);arm%i_st%i_rp%i y (mm)",arm_PUT,station_PUT,rp_PUT,arm,station,rp,arm_PUT,station_PUT,rp_PUT),
+              Form("h2Y0Correlation_arm%i_st%i_rp%i;arm%i_st%i y (mm);arm%i_st%i y (mm)",arm_PUT,station_PUT,rp_PUT,arm,station,arm_PUT,station_PUT),
               mapYbins,mapYmin,mapYmax,mapYbins_PUT,mapYmin_PUT,mapYmax_PUT);
               h2InterPotEfficiency_[pixelRpId_PUT] = new TH2D(Form("h2InterPotEfficiency_arm%i_st%i_rp%i",arm_PUT,station_PUT,rp_PUT),
               Form("h2InterPotEfficiency_arm%i_st%i_rp%i;x (mm);y (mm)",arm_PUT,station_PUT,rp_PUT),mapXbins_PUT,mapXmin_PUT,mapXmax_PUT,
@@ -377,9 +377,11 @@ void EfficiencyTool_2018::analyze(const edm::Event& iEvent, const edm::EventSetu
             for(const auto & pixeltrack_PUT : rpPixeltrack_PUT){
               double X0_PUT = pixeltrack_PUT.getX0();
               double Y0_PUT = pixeltrack_PUT.getY0();
-              if(isCorrelationPlotEnabled && rpPixeltrack.size() == 1 && rpPixeltrack_PUT.size() == 1){
-                g1X0Correlation_[pixelRpId_PUT]->SetPoint(g1X0Correlation_[pixelRpId_PUT]->GetN(),X0,X0_PUT);
-                g1Y0Correlation_[pixelRpId_PUT]->SetPoint(g1Y0Correlation_[pixelRpId_PUT]->GetN(),Y0,Y0_PUT);
+              if(rpPixeltrack.size() == 1 && rpPixeltrack_PUT.size() == 1){
+                if(isCorrelationPlotEnabled){
+                  g1X0Correlation_[pixelRpId_PUT]->SetPoint(g1X0Correlation_[pixelRpId_PUT]->GetN(),X0,X0_PUT);
+                  g1Y0Correlation_[pixelRpId_PUT]->SetPoint(g1Y0Correlation_[pixelRpId_PUT]->GetN(),Y0,Y0_PUT);                  
+                }
                 h2X0Correlation_[pixelRpId_PUT]->Fill(X0,X0_PUT);
                 h2Y0Correlation_[pixelRpId_PUT]->Fill(Y0,Y0_PUT);
               }

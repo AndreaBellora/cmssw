@@ -20,9 +20,19 @@ void ViewPlots(Int_t RunNumber){
 	Int_t lastRunPreTs1     = 317696;
 	Int_t lastRunPreTs2     = 888888;
 	Int_t lastRunOfTheYear  = 999999;
+
+	// This part defines the area in which the track efficiency is going to be averaged. For every RP it will be computed on a rectangular region going from
+	// (xbin, ybin-hbin) to (xbin+wbin, ybin+hbin).
+	// vector<Int_t> areaForAvgEfficiency_armX_stX{xbin,ybin,hbin,wbin};
+	vector<Int_t> areaForAvgEfficiency_arm0_st0{26,170,2,10};
+	vector<Int_t> areaForAvgEfficiency_arm0_st2{22,156,2,10};
+	vector<Int_t> areaForAvgEfficiency_arm1_st0{19,169,4,10};
+	vector<Int_t> areaForAvgEfficiency_arm1_st2{24,155,4,10};
+
 	bool Pre_TS1 = kFALSE;
 	bool TS1_TS2 = kFALSE;
 	bool Post_TS2 = kFALSE;
+	Int_t shift = 0;
 
 	if (RunNumber < firstRunOfTheYear){
 		std::cout << "This run doesn't belong to 2018 data taking!" << std::endl;
@@ -44,7 +54,14 @@ void ViewPlots(Int_t RunNumber){
 		std::cout << "This run doesn't belong to 2018 data taking!" << std::endl;
 		return;
 	}
-	// ADAPTATION WITH POT LIFTING HAS TO BE IMPLEMENTED
+
+	if(TS1_TS2) shift = 5;
+	if(Post_TS2) shift = 10;
+
+	areaForAvgEfficiency_arm0_st0[1] -= shift;
+	areaForAvgEfficiency_arm1_st0[1] -= shift;
+	areaForAvgEfficiency_arm0_st2[1] += shift;
+	areaForAvgEfficiency_arm1_st2[1] += shift;
 
 
 	TCanvas *cPixelHitmap = new TCanvas("cPixelHitmap","PixelHitmap",screen_x,screen_y,screen_w,screen_h);
@@ -63,14 +80,6 @@ void ViewPlots(Int_t RunNumber){
 	std::vector<Int_t> planes{0,1,2,3,4,5};
 	std::vector<Int_t> arms{0,1};
 	std::vector<Int_t> stations{0,2};
-
-	// This part defines the area in which the track efficiency is going to be averaged. For every RP it will be computed on a rectangular region going from
-	// (xbin, ybin-hbin) to (xbin+wbin, ybin+hbin).
-	// vector<Int_t> areaForAvgEfficiency_armX_stX{xbin,ybin,hbin,wbin};
-	vector<Int_t> areaForAvgEfficiency_arm0_st0{0,0,5,10};
-	vector<Int_t> areaForAvgEfficiency_arm0_st2{0,0,5,10};
-	vector<Int_t> areaForAvgEfficiency_arm1_st0{0,0,5,10};
-	vector<Int_t> areaForAvgEfficiency_arm1_st2{0,0,5,10};
 
 	std::map<std::pair<Int_t,Int_t>,vector<Int_t> > areaForAvgEfficiency;
 	areaForAvgEfficiency[std::pair<Int_t,Int_t>(0,0)] = areaForAvgEfficiency_arm0_st0;

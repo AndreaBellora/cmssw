@@ -239,7 +239,7 @@ void EfficiencyTool_2018::analyze(const edm::Event& iEvent, const edm::EventSetu
 
         for(const auto & hit : planeHits){
           if(hit.getIsUsedForFit()){
-            //Counting, for each plane, how many of the others were hit, to establish its efficiency is computable in the event
+            //Counting, for each plane, how many of the others were hit, to establish if its efficiency is computable in the event
             for(auto pln : numberOfPointPerPlaneEff){
               if(pln.first == planeId.plane()) continue;
               numberOfPointPerPlaneEff[pln.first] = pln.second + 1;
@@ -424,7 +424,7 @@ void EfficiencyTool_2018::beginJob(){}
 void EfficiencyTool_2018::endJob(){
   outputFile_ = new TFile(outputFileName_.data(), "RECREATE");
   std::cout<<"There have been found multiple matches for the same track " <<numberOfOvermatches << " times out of "<<numberOfAttempts << 
-  " (" << (((double)numberOfOvermatches)/numberOfAttempts)*100 << "%)" << std::endl;
+  " (" << (((double)numberOfOvermatches)/numberOfAttempts)*100 << "%) while computing the Interpot Efficiency" << std::endl;
   for(const auto & rpId :  romanPotIdVector_){
     uint32_t arm = rpId.arm();
     uint32_t rp = rpId.rp();

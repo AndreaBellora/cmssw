@@ -24,10 +24,10 @@ void ViewPlots(Int_t RunNumber){
 	// This part defines the area in which the track efficiency is going to be averaged. For every RP it will be computed on a rectangular region going from
 	// (xbin, ybin-hbin) to (xbin+wbin, ybin+hbin).
 	// vector<Int_t> areaForAvgEfficiency_armX_stX{xbin,ybin,hbin,wbin};
-	vector<Int_t> areaForAvgEfficiency_arm0_st0{26,170,2,10};
-	vector<Int_t> areaForAvgEfficiency_arm0_st2{22,156,2,10};
-	vector<Int_t> areaForAvgEfficiency_arm1_st0{19,169,4,10};
-	vector<Int_t> areaForAvgEfficiency_arm1_st2{24,155,4,10};
+	std::vector<Int_t> areaForAvgEfficiency_arm0_st0{26,170,2,10};
+	std::vector<Int_t> areaForAvgEfficiency_arm0_st2{22,156,2,10};
+	std::vector<Int_t> areaForAvgEfficiency_arm1_st0{19,169,4,10};
+	std::vector<Int_t> areaForAvgEfficiency_arm1_st2{24,155,4,10};
 
 	bool Pre_TS1 = kFALSE;
 	bool TS1_TS2 = kFALSE;
@@ -58,10 +58,10 @@ void ViewPlots(Int_t RunNumber){
 	if(TS1_TS2) shift = 5;
 	if(Post_TS2) shift = 10;
 
-	areaForAvgEfficiency_arm0_st0[1] -= shift;
-	areaForAvgEfficiency_arm1_st0[1] -= shift;
-	areaForAvgEfficiency_arm0_st2[1] += shift;
-	areaForAvgEfficiency_arm1_st2[1] += shift;
+	// areaForAvgEfficiency_arm0_st0[1] -= shift;
+	// areaForAvgEfficiency_arm1_st0[1] -= shift;
+	// areaForAvgEfficiency_arm0_st2[1] += shift;
+	// areaForAvgEfficiency_arm1_st2[1] += shift;
 
 
 	TCanvas *cPixelHitmap = new TCanvas("cPixelHitmap","PixelHitmap",screen_x,screen_y,screen_w,screen_h);
@@ -81,7 +81,7 @@ void ViewPlots(Int_t RunNumber){
 	std::vector<Int_t> arms{0,1};
 	std::vector<Int_t> stations{0,2};
 
-	std::map<std::pair<Int_t,Int_t>,vector<Int_t> > areaForAvgEfficiency;
+	std::map <std::pair<Int_t,Int_t>,std::vector<Int_t> >areaForAvgEfficiency;
 	areaForAvgEfficiency[std::pair<Int_t,Int_t>(0,0)] = areaForAvgEfficiency_arm0_st0;
 	areaForAvgEfficiency[std::pair<Int_t,Int_t>(0,2)] = areaForAvgEfficiency_arm0_st2;
 	areaForAvgEfficiency[std::pair<Int_t,Int_t>(1,0)] = areaForAvgEfficiency_arm1_st0;

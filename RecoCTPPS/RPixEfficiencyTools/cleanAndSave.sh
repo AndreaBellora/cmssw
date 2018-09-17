@@ -10,5 +10,7 @@ else
 	echo "***Saving in Archive***"
 	echo "Saving OutputFiles/Run${1}.root in /eos/project/c/ctpps/subsystems/Pixel/RPixTracking/EfficiencyCalculation2018/Results2018"
 	eval "cp OutputFiles/Run${1}.root /eos/project/c/ctpps/subsystems/Pixel/RPixTracking/EfficiencyCalculation2018/Results2018/"
+	echo "Saving Plots in /eos/project/c/ctpps/subsystems/Pixel/RPixTracking/EfficiencyCalculation2018/Results2018/PlotsRun${1}"
+	eval "cp -r OutputFiles/PlotsRun${1} /eos/project/c/ctpps/subsystems/Pixel/RPixTracking/EfficiencyCalculation2018/Results2018/"
 	echo ""
 fi

@@ -16,7 +16,7 @@ else
 	then
 		echo "Using dataset: ${set}"
 	else
-		set=`echo "${set}" | grep -i /ZeroBias/Run2018.*2018.*/AOD`
+		set=`echo "${set}" | grep -i /ZeroBias/Run2018.*2018-v.*/AOD`
 		echo "More than one dataset was found"
 		echo "Using dataset: ${set}"
 	fi

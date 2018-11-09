@@ -62,20 +62,20 @@ runNumber=options.RunNumber
 if runNumber < firstRunOfTheYear:
     print("This run doesn't belong to 2018 data taking")
 elif runNumber <= lastRunPreTs1:
-    print("Analyzing Pre-TS1 data")
+    print("Analyzing Pre-TS1 data")#estimated from run 317661
     correlationCoefficients = [0.986511,0.922616,1.00923,1.0524,0.993892,0.93067,1.00467,1.06942]
     correlationConstants = [-37.6006,1.58184,38.165,-1.55599,-39.2032,1.84624,39.4468,-1.95123]
     sigmas = [0.24397,0.0916029,0.16667,0.116173,0.315105,0.10588,0.231927,0.1195]
 elif runNumber <= lastRunPreTs2:
-    print("Analyzing data taken between TS1 and TS2")
+    print("Analyzing data taken between TS1 and TS2")#estimated from run 320917
     correlationCoefficients = [0.986828,0.920718,1.00917,1.08219,0.997005,0.926529,0.998374,1.07058]
     correlationConstants = [-37.4915,0.7017,38.036,-0.7345,-38.8277,0.671142,38.9841,-0.680128]
     sigmas = [0.2124,0.0712,0.17727,0.09359,0.34288,0.081469,0.221028,0.0978877]
 elif runNumber <= lastRunOfTheYear:
-    print("Analyzing Post-TS2 data")
-    correlationCoefficients = [0.986511,0.922616,1.00923,1.0524,0.993892,0.93067,1.00467,1.06942]
-    correlationConstants = [-37.6006,1.58184,38.165,-1.55599,-39.2032,1.84624,39.4468,-1.95123]
-    sigmas = [0.24397,0.0916029,0.16667,0.116173,0.315105,0.10588,0.231927,0.1195]
+    print("Analyzing Post-TS2 data")#estimated from run 324878
+    correlationCoefficients = [0.98666,0.91512,1.0088,1.07385,0.99691,0.9239,0.9964,1.070]
+    correlationConstants = [-37.377,-0.1857,37.9335,0.2833,-38.759,-0.2301,38.94,0.2993]
+    sigmas = [0.256,0.0687,0.1906,0.1036,0.395,0.07,0.2275,0.0989]
 elif runNumber > lastRunOfTheYear:
     print("This run doesn't belong to 2018 data taking")
 
@@ -85,7 +85,7 @@ process.demo = cms.EDAnalyzer('EfficiencyTool_2018',
     # outputFileName=cms.untracked.string("RPixAnalysis_RecoLocalTrack_ReferenceRunAfterTS2.root"),
     outputFileName=cms.untracked.string(options.outputFileName),
     minNumberOfPlanesPerEfficiency=cms.int32(3),
-    isCorrelationPlotEnabled=cms.bool(False),#Only enable if the estimation of the correlation between Strips and Pixel tracks is under study 
+    isCorrelationPlotEnabled=cms.bool(True),#Only enable if the estimation of the correlation between Strips and Pixel tracks is under study 
                                             #(disables filling of TGraph, reducing the output file size)
     correlationCoefficients=cms.vdouble(correlationCoefficients),
     correlationConstants=cms.vdouble(correlationConstants),

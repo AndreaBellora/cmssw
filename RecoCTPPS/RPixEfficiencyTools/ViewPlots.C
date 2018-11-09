@@ -18,8 +18,8 @@ void ViewPlots(Int_t RunNumber){
 
 	Int_t firstRunOfTheYear = 314247;
 	Int_t lastRunPreTs1     = 317696;
-	Int_t lastRunPreTs2     = 888888;
-	Int_t lastRunOfTheYear  = 999999;
+	Int_t lastRunPreTs2     = 322633;
+	Int_t lastRunOfTheYear  = 324897;
 
 	// This part defines the area in which the track efficiency is going to be averaged. For every RP it will be computed on a rectangular region going from
 	// (xbin, ybin-hbin) to (xbin+wbin, ybin+hbin).

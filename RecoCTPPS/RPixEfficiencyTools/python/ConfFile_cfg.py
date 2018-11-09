@@ -55,8 +55,8 @@ process.source.lumisToProcess = LumiList.LumiList(filename = jsonFile).getVLumin
 nSigmaTolerance = 5.
 firstRunOfTheYear = 314247
 lastRunPreTs1     = 317696
-lastRunPreTs2     = 888888
-lastRunOfTheYear  = 999999
+lastRunPreTs2     = 322633
+lastRunOfTheYear  = 324897
 
 runNumber=options.RunNumber
 if runNumber < firstRunOfTheYear:

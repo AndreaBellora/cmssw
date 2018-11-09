@@ -245,7 +245,9 @@ void EfficiencyTool_2018::analyze(const edm::Event& iEvent, const edm::EventSetu
               numberOfPointPerPlaneEff[pln.first] = pln.second + 1;
             }
           }
-          h2ModuleHitMap_[planeId]->Fill(hit.getGlobalCoordinates().x(),hit.getGlobalCoordinates().y());
+          if(hit.getIsRealHit()){
+            h2ModuleHitMap_[planeId]->Fill(hit.getGlobalCoordinates().x(),hit.getGlobalCoordinates().y()); 
+          }
         }
       }
 
@@ -599,26 +601,32 @@ float EfficiencyTool_2018::probabilityNplanesBlind(const std::vector<uint32_t> &
 }
 
 //Calculates the partial derivative of the rp efficiency with respect to the efficiency of a certain plane when extracting numberToExtract planes
+//Calculates the partial derivative of the rp efficiency with respect to the efficiency of a certain plane when extracting numberToExtract planes
 float EfficiencyTool_2018::efficiencyPartialDerivativewrtPlane(uint32_t plane, const std::vector<uint32_t> &inputPlaneList, int numberToExtract, const std::map<unsigned, float> &planeEfficiency){
   std::vector<uint32_t> modifiedInputPlaneList = inputPlaneList;
   modifiedInputPlaneList.erase(std::find(modifiedInputPlaneList.begin(),modifiedInputPlaneList.end(),plane));
   float partialDerivative = 0.;
-  if(numberToExtract>1){
-    partialDerivative = probabilityNplanesBlind(modifiedInputPlaneList,numberToExtract,planeEfficiency) - probabilityNplanesBlind(modifiedInputPlaneList,numberToExtract-1,planeEfficiency);
+  if(numberToExtract > 0 && numberToExtract < 6 ){
+    partialDerivative = - probabilityNplanesBlind(modifiedInputPlaneList,numberToExtract,planeEfficiency) + probabilityNplanesBlind(modifiedInputPlaneList,numberToExtract-1,planeEfficiency);
   }
-  else{
-    partialDerivative = probabilityNplanesBlind(modifiedInputPlaneList, numberToExtract,planeEfficiency);
+  else {
+    if(numberToExtract == 6){
+    partialDerivative = probabilityNplanesBlind(modifiedInputPlaneList, numberToExtract-1,planeEfficiency);
+    }
+    else{
+      partialDerivative = - probabilityNplanesBlind(modifiedInputPlaneList,numberToExtract,planeEfficiency);
+    }
   }
   return partialDerivative;
 }
 
 float EfficiencyTool_2018::errorCalculation(const std::map<uint32_t, float> &planeEfficiency,const std::map<uint32_t, float> &planeEfficiencyError){
-  int minNumberOfPlanes = 3;
-  int maxNumberOfPlanes = listOfPlanes_.size();
+  int minNumberOfBlindPlanes = 3;
+  int maxNumberOfBlindPlanes = listOfPlanes_.size();
   float rpEfficiencySquareError = 0.;
   for(const auto & plane : listOfPlanes_){
     float partialDerivative = 0.;
-    for (uint32_t i=(uint32_t)minNumberOfPlanes+1; i<=(uint32_t)maxNumberOfPlanes; i++){
+    for (uint32_t i=(uint32_t)minNumberOfBlindPlanes; i<=(uint32_t)maxNumberOfBlindPlanes; i++){
     partialDerivative += efficiencyPartialDerivativewrtPlane(plane,listOfPlanes_,i,planeEfficiency);
     }
     rpEfficiencySquareError += partialDerivative*partialDerivative* planeEfficiencyError.at(plane) * planeEfficiencyError.at(plane);
@@ -629,11 +637,11 @@ float EfficiencyTool_2018::errorCalculation(const std::map<uint32_t, float> &pla
 
 float EfficiencyTool_2018::probabilityCalculation(const std::map<uint32_t, float> &planeEfficiency){
 
-  int minNumberOfPlanes = 3;
-  int maxNumberOfPlanes = listOfPlanes_.size();
+  int minNumberOfBlindPlanes = 4;
+  int maxNumberOfBlindPlanes = listOfPlanes_.size();
   float rpEfficiency = 1.;
 
-  for(uint32_t i = (uint32_t)minNumberOfPlanes +1; i<=(uint32_t)maxNumberOfPlanes; i++){
+  for(uint32_t i = (uint32_t)minNumberOfBlindPlanes; i<=(uint32_t)maxNumberOfBlindPlanes; i++){
     rpEfficiency-=probabilityNplanesBlind(listOfPlanes_, i, planeEfficiency);
   }
   return rpEfficiency;

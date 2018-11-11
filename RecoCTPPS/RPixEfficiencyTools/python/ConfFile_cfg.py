@@ -85,7 +85,7 @@ process.demo = cms.EDAnalyzer('EfficiencyTool_2018',
     # outputFileName=cms.untracked.string("RPixAnalysis_RecoLocalTrack_ReferenceRunAfterTS2.root"),
     outputFileName=cms.untracked.string(options.outputFileName),
     minNumberOfPlanesPerEfficiency=cms.int32(3),
-    isCorrelationPlotEnabled=cms.bool(True),#Only enable if the estimation of the correlation between Strips and Pixel tracks is under study 
+    isCorrelationPlotEnabled=cms.bool(False),#Only enable if the estimation of the correlation between Strips and Pixel tracks is under study 
                                             #(disables filling of TGraph, reducing the output file size)
     correlationCoefficients=cms.vdouble(correlationCoefficients),
     correlationConstants=cms.vdouble(correlationConstants),

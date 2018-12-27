@@ -17,8 +17,16 @@ else
 		echo "Using dataset: ${set}"
 	else
 		set=`echo "${set}" | grep -i /ZeroBias/Run2018.*2018-v.*/AOD`
-		echo "More than one dataset was found"
-		echo "Using dataset: ${set}"
+		nsets=`echo "${set}" | wc -l`
+		if [ ${nsets} -eq 1 ]
+		then
+			echo "More than one dataset was found"
+			echo "Using dataset: ${set}"
+		else
+			echo "More than one dataset was found"
+			set=`echo "${set}" | tail -1`
+			echo "Using dataset: ${set}"
+		fi
 	fi
 	eval "dasgoclient -query=\"file dataset=${set} run=${1}\" > test/InputFiles/Run${1}.dat"
 	fn=`eval "more test/InputFiles/Run${1}.dat | wc -l"`
@@ -26,7 +34,7 @@ else
 	echo "Saved in test/InputFiles/Run${1}.dat"
 	echo ""
 	echo "***Creating JSON file***"
-	jsonline=`eval "sed -n -e 's/^.*${1}/\"${1}/p' /eos/project/c/ctpps/Operations/DataExternalConditions/2018/test2018.json"`
+	jsonline=`eval "sed -n -e 's/^.*${1}/\"${1}/p' /eos/project/c/ctpps/Operations/DataExternalConditions/2018/2018_2RPGood_anyarms_ls.json"`
 	echo "{${jsonline}}" | sed -n -e 's/,}/}/p' > "test/JSONFiles/Run${1}.json"
 	echo "JSON File contains:"
 	eval "more test/JSONFiles/Run${1}.json"

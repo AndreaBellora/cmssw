@@ -57,6 +57,7 @@ inputFiles = cms.untracked.vstring( *fileList)
 process.source = cms.Source("PoolSource",
     fileNames = inputFiles,
     duplicateCheckMode = cms.untracked.string("checkEachFile"),
+    skipBadFiles = cms.untracked.bool(True),
 )
 
 

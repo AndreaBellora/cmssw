@@ -1,4 +1,4 @@
-<use name="FWCore/ParameterSet"/>
+e name="FWCore/ParameterSet"/>
 <use name="FWCore/Framework"/>
 
 <use name="DataFormats/Common"/>

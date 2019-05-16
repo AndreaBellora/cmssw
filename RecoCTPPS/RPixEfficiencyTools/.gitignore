@@ -1,0 +1,12 @@
+*.root
+*.dat
+*.json
+*.out
+*.err
+*.log
+*.sub
+*_success
+*.png
+x509*
+
+!data/*

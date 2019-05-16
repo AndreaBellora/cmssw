@@ -12,7 +12,7 @@ ctppsRPAlignmentCorrectionsDataESSourceXML.RealFiles = cms.vstring("Alignment/CT
 recoCTPPSdets = cms.Sequence(
     totemRPLocalReconstruction *
     ctppsDiamondLocalReconstruction *
-    totemTimingLocalReconstruction *
+    # totemTimingLocalReconstruction *
     ctppsPixelLocalReconstruction *
     ctppsLocalTrackLiteProducer
 )

@@ -38,4 +38,33 @@ process.Out = cms.OutputModule("PoolOutputModule",
 if options.maxSize:
     process.Out.maxSize = cms.untracked.int32 (options.maxSize)
 
+# MY STUFF
+process.MessageLogger = cms.Service("MessageLogger",
+    destinations = cms.untracked.vstring('cout'),
+    cout = cms.untracked.PSet( 
+        optionalPSet = cms.untracked.bool(True),
+        categories = cms.untracked.vstring(
+            "FwkReport"
+        ),
+        INFO = cms.untracked.PSet(
+            limit = cms.untracked.int32(0)
+        ),
+        WARNING = cms.untracked.PSet(
+            limit = cms.untracked.int32(10)
+            ),
+        noTimeStamps = cms.untracked.bool(False),
+        FwkReport = cms.untracked.PSet(
+            optionalPSet = cms.untracked.bool(True),
+            reportEvery = cms.untracked.int32(1000),
+            limit = cms.untracked.int32(10000000),
+        ),
+        default = cms.untracked.PSet(
+            limit = cms.untracked.int32(10000000)
+        ),
+        threshold = cms.untracked.string('INFO')
+        ),
+
+)
+
+
 process.end = cms.EndPath(process.Out)

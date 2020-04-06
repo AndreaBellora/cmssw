@@ -46,8 +46,8 @@ else
 		DoubleEG
 		)
 
-	nameTag=Run${1}_130
-	jsonFile=/eos/project/c/ctpps/Operations/DataExternalConditions/2017/combined_RPIN_CMS_130.json
+	nameTag=Run${1}
+	jsonFile=/eos/project/c/ctpps/Operations/DataExternalConditions/2017/combined_RPIN_CMS.json
 	outputDir=/eos/project/c/ctpps/subsystems/Pixel/RPixTracking/EfficiencyCalculation2017/ReRecoOutputTmp_CMSSW_10_6_0_patch1/
 
 	

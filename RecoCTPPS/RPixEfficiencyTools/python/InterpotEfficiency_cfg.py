@@ -45,6 +45,7 @@ options.register('maxPixelTracks',
                 "Maximum pixel tracks in RP")
 
 options.maxPixelTracks = 99
+options.recoInfo = -1
 options.parseArguments()
 
 import FWCore.Utilities.FileUtils as FileUtils
@@ -77,7 +78,7 @@ process.MessageLogger = cms.Service("MessageLogger",
         ),
 )
 
-process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(1000000) )
+process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(3000000) )
 
 process.source = cms.Source("PoolSource",
     # replace 'myfile.root' with the source file you want to use
@@ -96,9 +97,9 @@ if options.useJsonFile == True:
 
 # Fiducial region for tracks
 # RP order 0_0, 0_2, 1_0, 1_2 at the top left angle of the RP track map (for tilted pots)
-fiducialXLow = [0,2.0,0,2.4]
-fiducialYLow = [-99,-11.,-99,-10.9]
-fiducialYHigh = [99,4.2,99,4.7]
+fiducialXLow = [0,0,0,0]
+fiducialYLow = [-99,-99.,-99,-99]
+fiducialYHigh = [99,99,99,99]
 
 firstRunOfTheYear = 297050
 lastRunPreTs1     = 297469
@@ -125,6 +126,7 @@ process.demo = cms.EDAnalyzer('InterpotEfficiency_2017',
     outputFileName=cms.untracked.string(options.outputFileName),
     minNumberOfPlanesForEfficiency=cms.int32(3),
     minNumberOfPlanesForTrack=cms.int32(3),
+    maxNumberOfPlanesForTrack=cms.int32(6),
     minTracksPerEvent=cms.int32(0), # this affects only the proton part
     maxTracksPerEvent=cms.int32(options.maxPixelTracks), # this affects only the proton part
     binGroupingX=cms.untracked.int32(1),

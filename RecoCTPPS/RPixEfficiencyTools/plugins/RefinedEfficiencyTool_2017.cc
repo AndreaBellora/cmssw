@@ -149,9 +149,12 @@ RefinedEfficiencyTool_2017::RefinedEfficiencyTool_2017(
   maxTracksPerEvent = iConfig.getParameter<int>("maxTracksPerEvent");
   binGroupingX = iConfig.getUntrackedParameter<int>("binGroupingX");
   binGroupingY = iConfig.getUntrackedParameter<int>("binGroupingY");
-  fiducialXLowVector_ = iConfig.getUntrackedParameter<std::vector<double>>("fiducialXLow");
-  fiducialYLowVector_ = iConfig.getUntrackedParameter<std::vector<double>>("fiducialYLow");
-  fiducialYHighVector_ = iConfig.getUntrackedParameter<std::vector<double>>("fiducialYHigh");
+  fiducialXLowVector_ =
+      iConfig.getUntrackedParameter<std::vector<double>>("fiducialXLow");
+  fiducialYLowVector_ =
+      iConfig.getUntrackedParameter<std::vector<double>>("fiducialYLow");
+  fiducialYHighVector_ =
+      iConfig.getUntrackedParameter<std::vector<double>>("fiducialYHigh");
   fiducialXLow_ = {
       {std::pair<int, int>(0, 0), fiducialXLowVector_.at(0)},
       {std::pair<int, int>(0, 2), fiducialXLowVector_.at(1)},
@@ -410,7 +413,8 @@ bool RefinedEfficiencyTool_2017::Cut(CTPPSPixelLocalTrack track, int arm,
       track.getChiSquaredOverNDF() * track.getNDF() > maxChi2 ||
       y > fiducialYHigh_[std::pair<int, int>(arm, station)] ||
       y < fiducialYLow_[std::pair<int, int>(arm, station)] ||
-      x < fiducialXLow_[std::pair<int, int>(arm, station)])
+      x < fiducialXLow_[std::pair<int, int>(arm, station)] ||
+      ((int)track.getRecoInfo() != 0 && (int)track.getRecoInfo() != 2))
     return true;
   else
     return false;

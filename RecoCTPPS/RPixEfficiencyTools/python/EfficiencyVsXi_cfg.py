@@ -9,6 +9,11 @@ process.options = cms.untracked.PSet(
     FailPath = cms.untracked.vstring('ProductNotFound','Type Mismatch')
     )
 options = VarParsing.VarParsing ()
+options.register('outputFileName',
+                '',
+                VarParsing.VarParsing.multiplicity.singleton,
+                VarParsing.VarParsing.varType.string,
+                "output ROOT file name")
 options.register('efficiencyFileName',
                 '',
                 VarParsing.VarParsing.multiplicity.singleton,
@@ -98,6 +103,8 @@ if options.useJsonFile == True:
 # cuts for POG plots
 fiducialXLow = [0,0,0,0]
 fiducialXHigh = [99,99,99,99]
+fiducialYLow = [-99,-99,-99,-99]
+fiducialYHigh = [99,99,99,99]
 
 if options.era == 'B':
     fiducialXLow = [0,1.995,0,2.422]
@@ -111,6 +118,18 @@ elif options.era == 'C1':
     fiducialYLow = [-99,-11.098,-99,-10.698]
     fiducialYHigh = [99,4.298,99,4.698]
     print('Era '+options.era+' cuts set')
+elif options.era == 'C2': 
+    fiducialXLow = [0,2.137,0,2.282]
+    fiducialXHigh = [99,24.334,99,24.62]
+    fiducialYLow = [-99,-11.098,-99,-10.698]
+    fiducialYHigh = [99,4.198,99,4.698]
+    print('Era '+options.era+' cuts set')
+elif options.era == 'D': 
+    fiducialXLow = [0,1.86,0,2.282]
+    fiducialXHigh = [99,24.334,99,24.62]
+    fiducialYLow = [-99,-11.098,-99,-10.698]
+    fiducialYHigh = [99,4.298,99,4.698]
+    print('Era '+options.era+' cuts set')
 elif options.era == 'E':
     fiducialXLow = [0,1.995,0,2.422]
     fiducialXHigh = [99,24.479,99,24.62]
@@ -119,6 +138,18 @@ elif options.era == 'E':
     print('Era '+options.era+' cuts set')
 elif options.era == 'F1':
     fiducialXLow = [0,1.995,0,2.422]
+    fiducialXHigh = [99,24.479,99,24.62]
+    fiducialYLow = [-99,-10.098,-99,-9.798]
+    fiducialYHigh = [99,4.998,99,5.398]
+    print('Era '+options.era+' cuts set')
+elif options.era == 'F2': 
+    fiducialXLow = [0,1.86,0,2.280]
+    fiducialXHigh = [99,24.479,99,24.62]
+    fiducialYLow = [-99,-10.098,-99,-9.798]
+    fiducialYHigh = [99,4.998,99,5.398]
+    print('Era '+options.era+' cuts set')
+elif options.era == 'F3': 
+    fiducialXLow = [0,1.86,0,2.280]
     fiducialXHigh = [99,24.479,99,24.62]
     fiducialYLow = [-99,-10.098,-99,-9.798]
     fiducialYHigh = [99,4.998,99,5.398]
@@ -155,6 +186,7 @@ elif runNumber > lastRunOfTheYear:
 process.demo = cms.EDAnalyzer('EfficiencyVsXi_2017',
     # outputFileName=cms.untracked.string("RPixAnalysis_RecoLocalTrack_ReferenceRunAfterTS2.root"),
     efficiencyFileName=cms.untracked.string(options.efficiencyFileName),
+    outputFileName=cms.untracked.string(options.outputFileName),
     minNumberOfPlanesForEfficiency=cms.int32(3),
     minNumberOfPlanesForTrack=cms.int32(3),
     minTracksPerEvent=cms.int32(0),

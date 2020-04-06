@@ -33,7 +33,7 @@ from HLTrigger.HLTfilters.hltHighLevel_cfi import *
 process.triggerSelection  = hltHighLevel.clone(TriggerResultsTag = "TriggerResults::HLT", HLTPaths = ['HLT_Ele32_WPTight_Gsf_L1DoubleEG_v*','HLT_Ele35_WPTight_Gsf_v*'])
 
 process.output = cms.OutputModule("PoolOutputModule",
-    fileName = cms.untracked.string('ReReco_2017C1.root'),
+    fileName = cms.untracked.string('ReReco_2017F2.root'),
     outputCommands = cms.untracked.vstring("drop *",
         "keep *LocalTrack*_*_*_reRECO",
         "keep *Protons*_*_*_reRECO",

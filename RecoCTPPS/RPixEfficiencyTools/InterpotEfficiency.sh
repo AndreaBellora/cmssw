@@ -11,5 +11,5 @@ else
 	export X509_USER_PROXY=$CMSSW_BASE/src/RecoCTPPS/RPixEfficiencyTools/x509up_u$UID
 	cd $CMSSW_BASE/src/RecoCTPPS/RPixEfficiencyTools/
 	eval `scramv1 runtime -sh`
-	eval "cmsRun python/InterpotEfficiency_cfg.py sourceFileList=InputFiles/$nameTag.dat outputFileName=OutputFiles/$nameTag_interpotEfficiency.root runNumber=${1} recoInfo=-1"
+	eval "cmsRun python/InterpotEfficiency_cfg.py sourceFileList=InputFiles/${nameTag}.dat outputFileName=OutputFiles/${nameTag}_interpotEfficiency.root runNumber=${1} recoInfo=-1 maxPixelTracks=99"
 fi

@@ -87,6 +87,7 @@ private:
 
   // Parameter set
   std::string efficiencyFileName_;
+  std::string outputFileName_;
   int minNumberOfPlanesForEfficiency_;
   int minNumberOfPlanesForTrack_;
   int maxNumberOfPlanesForTrack_ = 6;
@@ -182,6 +183,8 @@ EfficiencyVsXi_2017::EfficiencyVsXi_2017(const edm::ParameterSet &iConfig) {
 
   efficiencyFileName_ =
       iConfig.getUntrackedParameter<std::string>("efficiencyFileName");
+  outputFileName_ =
+      iConfig.getUntrackedParameter<std::string>("outputFileName");
   minNumberOfPlanesForEfficiency_ =
       iConfig.getParameter<int>("minNumberOfPlanesForEfficiency"); // UNUSED!
   minNumberOfPlanesForTrack_ =
@@ -190,10 +193,14 @@ EfficiencyVsXi_2017::EfficiencyVsXi_2017(const edm::ParameterSet &iConfig) {
   maxTracksPerEvent = iConfig.getParameter<int>("maxTracksPerEvent"); // UNUSED!
   binGroupingX = iConfig.getUntrackedParameter<int>("binGroupingX");  // UNUSED!
   binGroupingY = iConfig.getUntrackedParameter<int>("binGroupingY");  // UNUSED!
-  fiducialXLowVector_ = iConfig.getUntrackedParameter<std::vector<double>>("fiducialXLow");
-  fiducialXHighVector_ = iConfig.getUntrackedParameter<std::vector<double>>("fiducialXHigh");
-  fiducialYLowVector_ = iConfig.getUntrackedParameter<std::vector<double>>("fiducialYLow");
-  fiducialYHighVector_ = iConfig.getUntrackedParameter<std::vector<double>>("fiducialYHigh");
+  fiducialXLowVector_ =
+      iConfig.getUntrackedParameter<std::vector<double>>("fiducialXLow");
+  fiducialXHighVector_ =
+      iConfig.getUntrackedParameter<std::vector<double>>("fiducialXHigh");
+  fiducialYLowVector_ =
+      iConfig.getUntrackedParameter<std::vector<double>>("fiducialYLow");
+  fiducialYHighVector_ =
+      iConfig.getUntrackedParameter<std::vector<double>>("fiducialYHigh");
   fiducialXLow_ = {
       {std::pair<int, int>(0, 0), fiducialXLowVector_.at(0)},
       {std::pair<int, int>(0, 2), fiducialXLowVector_.at(1)},
@@ -254,7 +261,7 @@ void EfficiencyVsXi_2017::analyze(const edm::Event &iEvent,
     CTPPSLocalTrackLite track = *(proton.contributingLocalTracks().at(0));
     CTPPSDetId detId = CTPPSDetId(track.getRPId());
     trackMux_[detId]++;
-    
+
     if (proton.contributingLocalTracks().size() > 1) {
       std::cout << "More than one track contributing to the proton!"
                 << std::endl;
@@ -268,7 +275,9 @@ void EfficiencyVsXi_2017::analyze(const edm::Event &iEvent,
         std::cout << "Caught exception!" << std::endl;
       continue;
     }
-
+    if (std::find(romanPotIdVector_.begin(), romanPotIdVector_.end(),
+                  pixelDetId) == romanPotIdVector_.end())
+      continue;
     if (Cut(track))
       continue;
 
@@ -370,9 +379,18 @@ void EfficiencyVsXi_2017::beginJob() {
           Form("Arm%i_st%i_rp3/"
                "h2RefinedTrackEfficiency_arm%i_st%i_rp3",
                arm, station, arm, station);
+      std::string h2InterpotEfficiencyMapName =
+          Form("Arm%i_st%i_rp3/"
+               "h2InterPotEfficiencyMap_arm%i_st%i_rp3",
+               arm, station, arm, station);
+
       if (efficiencyFile_->Get(h2RefinedEfficiencyMapName.data())) {
         h2RefinedTrackEfficiency_[rpId] = new TH2D(
             *((TH2D *)efficiencyFile_->Get(h2RefinedEfficiencyMapName.data())));
+        romanPotIdVector_.push_back(rpId);
+      } else if (efficiencyFile_->Get(h2InterpotEfficiencyMapName.data())) {
+        h2RefinedTrackEfficiency_[rpId] = new TH2D(*(
+            (TH2D *)efficiencyFile_->Get(h2InterpotEfficiencyMapName.data())));
         romanPotIdVector_.push_back(rpId);
       }
     }
@@ -383,9 +401,6 @@ void EfficiencyVsXi_2017::beginJob() {
 
 void EfficiencyVsXi_2017::endJob() {
 
-  std::string outputFileName_ =
-      efficiencyFileName_.erase(efficiencyFileName_.size() - 23) +
-      "_efficiencyVsXi_noXCuts.root";
   TFile *outputFile_ = new TFile(outputFileName_.data(), "RECREATE");
   for (auto &rpId : romanPotIdVector_) {
     uint32_t arm = rpId.arm();
@@ -442,7 +457,9 @@ bool EfficiencyVsXi_2017::Cut(CTPPSLocalTrackLite track) {
       y > fiducialYHigh_[std::pair<int, int>(arm, station)] ||
       y < fiducialYLow_[std::pair<int, int>(arm, station)] ||
       x < fiducialXLow_[std::pair<int, int>(arm, station)] ||
-      x > fiducialXHigh_[std::pair<int, int>(arm, station)])
+      x > fiducialXHigh_[std::pair<int, int>(arm, station)] ||
+      ((int)track.getPixelTrackRecoInfo() != 0 &&
+       (int)track.getPixelTrackRecoInfo() != 2))
     return true;
   else
     return false;

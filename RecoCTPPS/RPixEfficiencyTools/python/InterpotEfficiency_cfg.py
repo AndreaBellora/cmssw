@@ -88,7 +88,7 @@ process.MessageLogger = cms.Service("MessageLogger",
         ),
 )
 
-process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(-1) )
+process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(1000000) )
 
 process.source = cms.Source("PoolSource",
     # replace 'myfile.root' with the source file you want to use
@@ -145,11 +145,11 @@ elif runNumber > lastRunOfTheYear:
     
 process.demo = cms.EDAnalyzer('InterpotEfficiency_2018',
     outputFileName=cms.untracked.string(options.outputFileName),
-    minNumberOfPlanesForEfficiency=cms.int32(3),
-    minNumberOfPlanesForTrack=cms.int32(3),
+    minNumberOfPlanesForEfficiency=cms.untracked.int32(3),
+    minNumberOfPlanesForTrack=cms.untracked.int32(3),
     maxChi2Prob=cms.untracked.double(options.maxChi2Prob),
-    maxTracksInProbePot=cms.untracked.int(options.maxTracksInProbePot),    
-    maxTracksInTagPot=cms.untracked.int(options.maxTracksInTagPot),    
+    maxTracksInProbePot=cms.untracked.int32(options.maxTracksInProbePot),    
+    maxTracksInTagPot=cms.untracked.int32(options.maxTracksInTagPot),    
     binGroupingX=cms.untracked.int32(1),
     binGroupingY=cms.untracked.int32(1),
     fiducialXLow=cms.untracked.vdouble(fiducialXLow),

@@ -77,7 +77,6 @@ private:
 
   // Parameter set
   std::string outputFileName_;
-  int minNumberOfPlanesForEfficiency_;
   int minNumberOfPlanesForTrack_;
   int maxNumberOfPlanesForTrack_ = 6;
   uint32_t maxTracksInTagPot = 99;
@@ -126,12 +125,12 @@ private:
   // Maximum difference between xi measurements of the same proton
   // double xiMatch = 0.007;
   // double yMatch = 1;
-  double xiMatch45 = 0.010;
+  double xiMatch45 = 0.005;
   // double xiMatch45 = 0.007;
-  double xiMatch56 = 0.015;
+  double xiMatch56 = 0.01;
   // double xiMatch56 = 0.007;
-  double yMatch = 99;
-  bool excludeMultipleMatches = true;
+  double yMatch = 1;
+  bool excludeMultipleMatches = false;
 
   // Number of times that a Tag proton matched more than one Probe
   std::map<CTPPSPixelDetId, uint32_t> overmatches;
@@ -186,9 +185,9 @@ InterpotEfficiency_2018::InterpotEfficiency_2018(
   outputFileName_ =
       iConfig.getUntrackedParameter<std::string>("outputFileName");
   minNumberOfPlanesForTrack_ =
-      iConfig.getParameter<int>("minNumberOfPlanesForTrack");
-  maxTracksInTagPot = iConfig.getParameter<int>("maxTracksInTagPot");
-  maxTracksInProbePot = iConfig.getParameter<int>("maxTracksInProbePot");
+      iConfig.getUntrackedParameter<int>("minNumberOfPlanesForTrack");
+  maxTracksInTagPot = iConfig.getUntrackedParameter<int>("maxTracksInTagPot");
+  maxTracksInProbePot = iConfig.getUntrackedParameter<int>("maxTracksInProbePot");
   maxChi2Prob_ = iConfig.getUntrackedParameter<double>("maxChi2Prob");
 
   binGroupingX = iConfig.getUntrackedParameter<int>("binGroupingX"); // UNUSED!
@@ -546,8 +545,8 @@ void InterpotEfficiency_2018::analyze(const edm::Event &iEvent,
         }
 
         if (arm == arm_Tag && station == station_Tag && station != 1 &&
-            TMath::Abs(trackX0_Tag - trackX0) < 0.1 &&
-            TMath::Abs(trackY0_Tag - trackY0) < 0.1) {
+            TMath::Abs(trackX0_Tag - trackX0) < 0.01 &&
+            TMath::Abs(trackY0_Tag - trackY0) < 0.01) {
           if (debug_)
             std::cout << "**MultiRP proton matched to the strips track!**"
                       << std::endl;

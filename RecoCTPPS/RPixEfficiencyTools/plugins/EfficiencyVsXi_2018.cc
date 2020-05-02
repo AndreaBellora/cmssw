@@ -1,10 +1,10 @@
 // -*- C++ -*-
 //
 // Package:    RecoCTPPS/RPixEfficiencyTools
-// Class:      EfficiencyVsxi_2018
+// Class:      EfficiencyVsXi_2018
 //
-/**\class EfficiencyVsxi_2018 EfficiencyVsxi_2018.cc
- RecoCTPPS/RPixEfficiencyTools/plugins/EfficiencyVsxi_2018.cc
+/**\class EfficiencyVsXi_2018 EfficiencyVsXi_2018.cc
+ RecoCTPPS/RPixEfficiencyTools/plugins/EfficiencyVsXi_2018.cc
 
  Description: [one line class summary]
 
@@ -49,11 +49,11 @@
 #include <TMath.h>
 #include <TObjArray.h>
 
-class EfficiencyVsxi_2018
+class EfficiencyVsXi_2018
     : public edm::one::EDAnalyzer<edm::one::SharedResources> {
 public:
-  explicit EfficiencyVsxi_2018(const edm::ParameterSet &);
-  ~EfficiencyVsxi_2018();
+  explicit EfficiencyVsXi_2018(const edm::ParameterSet &);
+  ~EfficiencyVsXi_2018();
   static void fillDescriptions(edm::ConfigurationDescriptions &descriptions);
 
 private:
@@ -168,7 +168,7 @@ private:
   bool useMultiRP_ = false;
 };
 
-EfficiencyVsxi_2018::EfficiencyVsxi_2018(const edm::ParameterSet &iConfig) {
+EfficiencyVsXi_2018::EfficiencyVsXi_2018(const edm::ParameterSet &iConfig) {
   usesResource("TFileService");
   protonsToken_ = consumes<reco::ForwardProtonCollection>(
       edm::InputTag("ctppsProtons", "singleRP"));
@@ -220,7 +220,7 @@ EfficiencyVsxi_2018::EfficiencyVsxi_2018(const edm::ParameterSet &iConfig) {
   };
 }
 
-EfficiencyVsxi_2018::~EfficiencyVsxi_2018() {
+EfficiencyVsXi_2018::~EfficiencyVsXi_2018() {
   for (auto &rpId : romanPotIdVector_) {
     delete h2RefinedTrackEfficiency_[rpId];
     delete h1RecoMethod_[rpId];
@@ -235,7 +235,7 @@ EfficiencyVsxi_2018::~EfficiencyVsxi_2018() {
   }
 }
 
-void EfficiencyVsxi_2018::analyze(const edm::Event &iEvent,
+void EfficiencyVsXi_2018::analyze(const edm::Event &iEvent,
                                   const edm::EventSetup &iSetup) {
   using namespace edm;
 
@@ -349,14 +349,14 @@ void EfficiencyVsxi_2018::analyze(const edm::Event &iEvent,
   }
 }
 
-void EfficiencyVsxi_2018::fillDescriptions(
+void EfficiencyVsXi_2018::fillDescriptions(
     edm::ConfigurationDescriptions &descriptions) {
   edm::ParameterSetDescription desc;
   desc.setUnknown();
   descriptions.addDefault(desc);
 }
 
-void EfficiencyVsxi_2018::beginJob() {
+void EfficiencyVsXi_2018::beginJob() {
   efficiencyFile_ = new TFile(efficiencyFileName_.data(), "READ");
   if (!efficiencyFile_->IsOpen()) {
     std::cout << "No efficiency file available!" << std::endl;
@@ -405,7 +405,7 @@ void EfficiencyVsxi_2018::beginJob() {
   delete efficiencyFile_;
 }
 
-void EfficiencyVsxi_2018::endJob() {
+void EfficiencyVsXi_2018::endJob() {
 
   TFile *outputFile_ = new TFile(outputFileName_.data(), "RECREATE");
   for (auto &rpId : romanPotIdVector_) {
@@ -441,7 +441,7 @@ void EfficiencyVsxi_2018::endJob() {
   delete outputFile_;
 }
 
-bool EfficiencyVsxi_2018::Cut(CTPPSLocalTrackLite track) {
+bool EfficiencyVsXi_2018::Cut(CTPPSLocalTrackLite track) {
   CTPPSDetId detId = CTPPSDetId(track.getRPId());
   uint32_t arm = detId.arm();
   uint32_t station = detId.station();
@@ -469,4 +469,4 @@ bool EfficiencyVsxi_2018::Cut(CTPPSLocalTrackLite track) {
 }
 
 // define this as a plug-in
-DEFINE_FWK_MODULE(EfficiencyVsxi_2018);
+DEFINE_FWK_MODULE(EfficiencyVsXi_2018);

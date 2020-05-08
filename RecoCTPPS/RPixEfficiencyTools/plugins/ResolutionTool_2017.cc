@@ -83,8 +83,6 @@ private:
 
   TFile *outputFile_;
   std::string outputFileName_;
-  bool isCorrelationPlotEnabled;
-  bool supplementaryPlots;
   int minTracksPerEvent;
   int maxTracksPerEvent;
   int minPointsForFit_;
@@ -93,35 +91,24 @@ private:
   int maxNumberOfCls2_;
 
   std::vector<CTPPSPixelDetId> romanPotIdVector_;
-
-  std::vector<double> correlationCoefficients;
-  std::vector<double> correlationConstants;
-  std::vector<double> correlationTolerances;
-
   std::vector<uint32_t> listOfPlanes_ = {0, 1, 2, 3, 4, 5};
 
-  int interPotEffMinTracksStart = 0;
-  int interPotEffMaxTracksStart = 99;
   int binGroupingX = 1;
   int binGroupingY = 1;
 
   int mapXbins_st2 = 200 / binGroupingX;
-  float mapXmin_st2 = 43. * TMath::Cos(18.4 / 180. * TMath::Pi());
-  float mapXmax_st2 = 73. * TMath::Cos(18.4 / 180. * TMath::Pi());
+  float mapXmin_st2 = 0. * TMath::Cos(18.4 / 180. * TMath::Pi());
+  float mapXmax_st2 = 30. * TMath::Cos(18.4 / 180. * TMath::Pi());
   int mapYbins_st2 = 240 / binGroupingY;
-  float mapYmin_st2 = -12.;
-  float mapYmax_st2 = 12.;
-  float fitXmin_st2 = 6.;
-  float fitXmax_st2 = 19.;
+  float mapYmin_st2 = -16.;
+  float mapYmax_st2 = 8.;
 
   int mapXbins_st0 = 200 / binGroupingX;
-  float mapXmin_st0 = 3. * TMath::Cos(18.4 / 180. * TMath::Pi());
-  float mapXmax_st0 = 33. * TMath::Cos(18.4 / 180. * TMath::Pi());
+  float mapXmin_st0 = 0. * TMath::Cos(18.4 / 180. * TMath::Pi());
+  float mapXmax_st0 = 30. * TMath::Cos(18.4 / 180. * TMath::Pi());
   int mapYbins_st0 = 240 / binGroupingY;
-  float mapYmin_st0 = -12.;
-  float mapYmax_st0 = 12.;
-  float fitXmin_st0 = 45.;
-  float fitXmax_st0 = 58.;
+  float mapYmin_st0 = -16.;
+  float mapYmax_st0 = 8.;
 
   int mapXbins = mapXbins_st0;
   float mapXmin = mapXmin_st0;
@@ -129,14 +116,6 @@ private:
   int mapYbins = mapYbins_st0;
   float mapYmin = mapYmin_st0;
   float mapYmax = mapYmax_st0;
-  float fitXmin = fitXmin_st0;
-  float fitXmax = fitXmax_st0;
-
-  std::map<CTPPSPixelDetId, int> binAlignmentParameters = {
-      {CTPPSPixelDetId(0, 0, 3), 100},
-      {CTPPSPixelDetId(0, 2, 3), 140},
-      {CTPPSPixelDetId(1, 0, 3), 100},
-      {CTPPSPixelDetId(1, 2, 3), 80}};
 
   // Histograms
 
@@ -169,13 +148,12 @@ private:
   int nPlanesWithColCls2_, nPlanesWithRowCls2_;
   std::vector<int> nHitsPerPlane_; // ordered per plane number
                                    // before refitting
-
   std::vector<double> xRefit_, yRefit_, chi2OverNDFRefit_;
   std::vector<double> residualX_, residualY_, residualUnconstrainedX_,
       residualUnconstrainedY_;
   std::vector<double> pullX_, pullY_, pullUnconstrainedX_, pullUnconstrainedY_;
   std::vector<int> clsSizeCol_, clsSizeRow_;
-  std::vector<int> arm_, station_, plane_;
+  std::vector<int> arm_, station_, plane_, recoInfo_;
 };
 
 ResolutionTool_2017::ResolutionTool_2017(const edm::ParameterSet &iConfig) {
@@ -186,21 +164,8 @@ ResolutionTool_2017::ResolutionTool_2017(const edm::ParameterSet &iConfig) {
       edm::InputTag("ctppsPixelRecHits", ""));
   outputFileName_ =
       iConfig.getUntrackedParameter<std::string>("outputFileName");
-  isCorrelationPlotEnabled =
-      iConfig.getParameter<bool>("isCorrelationPlotEnabled");
-  correlationCoefficients =
-      iConfig.getParameter<std::vector<double>>("correlationCoefficients");
-  correlationConstants =
-      iConfig.getParameter<std::vector<double>>("correlationConstants");
-  correlationTolerances =
-      iConfig.getParameter<std::vector<double>>("correlationTolerances");
-  interPotEffMinTracksStart =
-      iConfig.getUntrackedParameter<int>("interPotEffMinTracksStart");
-  interPotEffMaxTracksStart =
-      iConfig.getUntrackedParameter<int>("interPotEffMaxTracksStart");
   minTracksPerEvent = iConfig.getParameter<int>("minTracksPerEvent");
   maxTracksPerEvent = iConfig.getParameter<int>("maxTracksPerEvent");
-  supplementaryPlots = iConfig.getParameter<bool>("supplementaryPlots");
   binGroupingX = iConfig.getUntrackedParameter<int>("binGroupingX");
   binGroupingY = iConfig.getUntrackedParameter<int>("binGroupingY");
   minPointsForFit_ = iConfig.getUntrackedParameter<int>("minPointsForFit");
@@ -257,11 +222,17 @@ void ResolutionTool_2017::analyze(const edm::Event &iEvent,
   geometryWatcher_.check(iSetup);
 
   for (const auto &rpPixelTrack : *pixelLocalTracks) {
+    
+    // For 2017
+    if (CTPPSDetId(rpPixelTrack.detId()).station() == 0)
+      continue;
+    
     CTPPSPixelDetId rpId = CTPPSPixelDetId(rpPixelTrack.detId());
-    find_or_insert(romanPotIdVector_, rpId);
     uint32_t arm = rpId.arm();
     uint32_t rp = rpId.rp();
     uint32_t station = rpId.station();
+
+    find_or_insert(romanPotIdVector_, rpId);
 
     if (station == 2) {
       mapXbins = mapXbins_st2;
@@ -270,8 +241,6 @@ void ResolutionTool_2017::analyze(const edm::Event &iEvent,
       mapYbins = mapYbins_st2;
       mapYmin = mapYmin_st2;
       mapYmax = mapYmax_st2;
-      fitXmin = fitXmin_st2;
-      fitXmax = fitXmax_st2;
     } else {
       mapXbins = mapXbins_st0;
       mapXmin = mapXmin_st0;
@@ -279,8 +248,6 @@ void ResolutionTool_2017::analyze(const edm::Event &iEvent,
       mapYbins = mapYbins_st0;
       mapYmin = mapYmin_st0;
       mapYmax = mapYmax_st0;
-      fitXmin = fitXmin_st0;
-      fitXmax = fitXmax_st0;
     }
 
     if (h1PointsUsedForFit_.find(rpId) == h1PointsUsedForFit_.end()) {
@@ -347,6 +314,7 @@ void ResolutionTool_2017::analyze(const edm::Event &iEvent,
       pullUnconstrainedY_.clear();
       clsSizeCol_.clear();
       clsSizeRow_.clear();
+      recoInfo_.clear();
       arm_.clear();
       station_.clear();
       plane_.clear();
@@ -462,6 +430,7 @@ void ResolutionTool_2017::analyze(const edm::Event &iEvent,
         pullUnconstrainedY_.push_back(newFittedRecHits[planeId][0].getYPull());
         clsSizeCol_.push_back(newFittedRecHits[planeId][0].clusterSizeCol());
         clsSizeRow_.push_back(newFittedRecHits[planeId][0].clusterSizeRow());
+        recoInfo_.push_back((int)pixeltrack.getRecoInfo());
         arm_.push_back(arm);
         station_.push_back(station);
         plane_.push_back(plane);
@@ -545,6 +514,7 @@ void ResolutionTool_2017::beginJob() {
   tTracks_->Branch("clsSizeRow", &clsSizeRow_);
   tTracks_->Branch("nHitsPerPlane", &nHitsPerPlane_);
   tTracks_->Branch("nPointsUsedForFit", &nPointsUsedForFit_);
+  tTracks_->Branch("recoInfo", &recoInfo_);
   tTracks_->Branch("arm", &arm_);
   tTracks_->Branch("station", &station_);
   tTracks_->Branch("plane", &plane_);

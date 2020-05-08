@@ -2,7 +2,7 @@ from CRABClient.UserUtilities import config, getUsernameFromSiteDB
 config = config()
 
 config.General.requestName = 'ctpps_2017D_pixelefficiency_singleele'
-config.General.workArea = '/tmp/abellora/ctpps_2017Dreal_pixelefficiency_singleele'
+config.General.workArea = '/tmp/abellora/ctpps_2017D_pixelefficiency_singleele'
 config.General.transferOutputs = True
 config.General.transferLogs = True
 
@@ -11,14 +11,16 @@ config.JobType.pluginName = 'analysis'
 config.JobType.psetName = 'test/skimFilesForCRAB.py'
 
 config.Data.inputDataset = '/SingleElectron/Run2017D-09Aug2019_UL2017-v1/AOD'
+# '/SingleElectron/Run2017F-09Aug2019_UL2017_rsb-v2/AOD'
 # '/SingleElectron/Run2017C-17Nov2017-v1/AOD'
+# /SingleElectron/Run2017E-09Aug2019_UL2017-v1/AOD
 config.Data.allowNonValidInputDataset = True # CAREFUL WITH THIS
 
 config.Data.inputDBS = 'global'
 
 config.Data.splitting = 'FileBased'      
 # config.Data.splitting = 'Automatic'                                                                                         
-config.Data.unitsPerJob = 21                                                                                                      
+config.Data.unitsPerJob = 20                                                                                              
 config.Data.lumiMask = '/eos/project/c/ctpps/Operations/DataExternalConditions/2017/combined_RPIN_CMS_EraD.json'
 # config.Data.totalUnits = 10
 

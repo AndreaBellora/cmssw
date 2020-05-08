@@ -77,16 +77,15 @@ private:
   edm::EDGetTokenT<reco::ForwardProtonCollection> protonsToken_;
   edm::EDGetTokenT<reco::ForwardProtonCollection> multiRP_protonsToken_;
 
-  edm::EDGetTokenT<edm::DetSetVector<CTPPSPixelRecHit>> pixelRecHitToken_;
-
-  edm::EDGetTokenT<edm::DetSetVector<CTPPSPixelLocalTrack>>
-      pixelHeavyTrackToken_; // CTPPSPixelLocalTrack-> not Lite
+  // edm::EDGetTokenT<edm::DetSetVector<CTPPSPixelLocalTrack>>
+  //     pixelHeavyTrackToken_; // CTPPSPixelLocalTrack-> not Lite
 
   // Parameter set
   std::string outputFileName_;
   int minNumberOfPlanesForEfficiency_;
   int minNumberOfPlanesForTrack_;
   int maxNumberOfPlanesForTrack_;
+  double maxChi2Prob_;
   int minTracksPerEvent;
   int maxTracksPerEvent;
 
@@ -132,11 +131,19 @@ private:
   double chiMin = 0;
   double chiMax = 6;
 
-  // Maximum difference between xi measurements of the same proton
-  double xiMatch = 0.007;
-  double yMatch = 1;
-  // double xiMatch = 0.01;
-  // double yMatch = 99;
+  double xiMatchMean45 = 0;
+  double xiMatchMean56 = 0;
+  double yMatchMean45 = 0;
+  double yMatchMean56 = 0;
+  double xMatchMean45 = 0;
+  double xMatchMean56 = 0;
+  double xiMatchWindow45 = 0.010;
+  double xiMatchWindow56 = 0.015;
+  double yMatchWindow45 = 99;
+  double yMatchWindow56 = 99;
+  double xMatchWindow45 = 99;
+  double xMatchWindow56 = 99;
+  bool excludeMultipleMatches = true;
 
   // Number of times that a Tag proton matched more than one Probe
   std::map<CTPPSPixelDetId, uint32_t> overmatches;
@@ -148,23 +155,23 @@ private:
   std::map<CTPPSPixelDetId, uint32_t> triesWithMatch;
   std::map<CTPPSPixelDetId, uint32_t> triesWithoutMatch;
 
-  // std::map<CTPPSPixelDetId, int> binAlignmentParameters = {
-  //     {CTPPSPixelDetId(0, 0, 3), 0},
-  //     {CTPPSPixelDetId(0, 2, 3), 0},
-  //     {CTPPSPixelDetId(1, 0, 3), 0},
-  //     {CTPPSPixelDetId(1, 2, 3), 0}};
-
   // output histograms
   std::map<CTPPSPixelDetId, TH2D *> h2AuxProtonHitDistribution_;
   std::map<CTPPSPixelDetId, TH2D *> h2InterPotEfficiencyMap_;
+  std::map<CTPPSPixelDetId, TH2D *> h2InterPotEfficiencyMapMultiRP_;
   std::map<CTPPSPixelDetId, TH1D *> h1AuxXi_;
   std::map<CTPPSPixelDetId, TH1D *> h1XiWhenPurityMatch_;
   std::map<CTPPSPixelDetId, TH1D *> h1InterPotEfficiencyVsXi_;
   std::map<CTPPSPixelDetId, TH1D *> h1DeltaXiMatch_;
+  std::map<CTPPSPixelDetId, TH1D *> h1DeltaXiMultiRP_;
   std::map<CTPPSPixelDetId, TH1D *> h1DeltaYMatch_;
+  std::map<CTPPSPixelDetId, TH1D *> h1DeltaYMultiRP_;
   std::map<CTPPSPixelDetId, TH1D *> h1TxMatch_;
+  std::map<CTPPSPixelDetId, TH1D *> h1TxMultiRP_;
   std::map<CTPPSPixelDetId, TH1D *> h1TyMatch_;
+  std::map<CTPPSPixelDetId, TH1D *> h1TyMultiRP_;
   std::map<CTPPSPixelDetId, TH1D *> h1ProtonsInProbePotWhenNoMatchFound_;
+  std::map<CTPPSPixelDetId, TH1D *> h1ProtonsInProbePotWhenMatchFound_;
   std::map<CTPPSPixelDetId, TH2D *> h2TxCorrelationMatch_;
   std::map<CTPPSPixelDetId, TH2D *> h2TyCorrelationMatch_;
   std::map<CTPPSPixelDetId, TH2D *> h2XCorrelationMatch_;
@@ -210,10 +217,8 @@ InterpotEfficiency_2017::InterpotEfficiency_2017(
       edm::InputTag("ctppsProtons", "singleRP"));
   multiRP_protonsToken_ = consumes<reco::ForwardProtonCollection>(
       edm::InputTag("ctppsProtons", "multiRP"));
-  pixelRecHitToken_ = consumes<edm::DetSetVector<CTPPSPixelRecHit>>(
-      edm::InputTag("ctppsPixelRecHits", ""));
-  pixelHeavyTrackToken_ = consumes<edm::DetSetVector<CTPPSPixelLocalTrack>>(
-      edm::InputTag("ctppsPixelLocalTracks", ""));
+  // pixelHeavyTrackToken_ = consumes<edm::DetSetVector<CTPPSPixelLocalTrack>>(
+  // edm::InputTag("ctppsPixelLocalTracks", ""));
 
   outputFileName_ =
       iConfig.getUntrackedParameter<std::string>("outputFileName");
@@ -221,6 +226,7 @@ InterpotEfficiency_2017::InterpotEfficiency_2017(
       iConfig.getParameter<int>("minNumberOfPlanesForTrack");
   maxNumberOfPlanesForTrack_ =
       iConfig.getParameter<int>("maxNumberOfPlanesForTrack");
+  maxChi2Prob_ = iConfig.getUntrackedParameter<double>("maxChi2Prob");
   minTracksPerEvent = iConfig.getParameter<int>("minTracksPerEvent"); // UNUSED!
   maxTracksPerEvent = iConfig.getParameter<int>("maxTracksPerEvent"); // UNUSED!
   binGroupingX = iConfig.getUntrackedParameter<int>("binGroupingX");  // UNUSED!
@@ -259,14 +265,20 @@ InterpotEfficiency_2017::~InterpotEfficiency_2017() {
   for (auto &rpId : romanPotIdVector_) {
     delete h2AuxProtonHitDistribution_[rpId];
     delete h2InterPotEfficiencyMap_[rpId];
+    delete h2InterPotEfficiencyMapMultiRP_[rpId];
     delete h1AuxXi_[rpId];
     delete h1XiWhenPurityMatch_[rpId];
     delete h1InterPotEfficiencyVsXi_[rpId];
     delete h1DeltaXiMatch_[rpId];
+    delete h1DeltaXiMultiRP_[rpId];
     delete h1DeltaYMatch_[rpId];
+    delete h1DeltaYMultiRP_[rpId];
     delete h1TxMatch_[rpId];
+    delete h1TxMultiRP_[rpId];
     delete h1TyMatch_[rpId];
+    delete h1TyMultiRP_[rpId];
     delete h1ProtonsInProbePotWhenNoMatchFound_[rpId];
+    delete h1ProtonsInProbePotWhenMatchFound_[rpId];
     delete h2TxCorrelationMatch_[rpId];
     delete h2TyCorrelationMatch_[rpId];
     delete h2XCorrelationMatch_[rpId];
@@ -296,17 +308,14 @@ void InterpotEfficiency_2017::analyze(const edm::Event &iEvent,
                                       const edm::EventSetup &iSetup) {
   using namespace edm;
 
-  Handle<edm::DetSetVector<CTPPSPixelRecHit>> pixelRecHits;
-  iEvent.getByToken(pixelRecHitToken_, pixelRecHits);
-
   Handle<reco::ForwardProtonCollection> protons;
   iEvent.getByToken(protonsToken_, protons);
 
   Handle<reco::ForwardProtonCollection> multiRP_protons;
   iEvent.getByToken(multiRP_protonsToken_, multiRP_protons);
 
-  Handle<edm::DetSetVector<CTPPSPixelLocalTrack>> pixelHeavyTracks;
-  iEvent.getByToken(pixelHeavyTrackToken_, pixelHeavyTracks);
+  // Handle<edm::DetSetVector<CTPPSPixelLocalTrack>> pixelHeavyTracks;
+  // iEvent.getByToken(pixelHeavyTrackToken_, pixelHeavyTracks);
 
   std::map<CTPPSPixelDetId, int> mux;
 
@@ -447,6 +456,7 @@ void InterpotEfficiency_2017::analyze(const edm::Event &iEvent,
           std::cout << "Mux cut not passed" << std::endl;
         continue;
       }
+      h1RecoInfo_[pixelDetId]->Fill((int)track_Tag.getPixelTrackRecoInfo());
 
       if (Cut(track_Tag)) {
         if (debug_)
@@ -454,7 +464,6 @@ void InterpotEfficiency_2017::analyze(const edm::Event &iEvent,
         continue;
       }
 
-      h1RecoInfo_[pixelDetId]->Fill((int)track_Tag.getPixelTrackRecoInfo());
       h2ProtonDistribution_[pixelDetId]->Fill(trackX0_Tag, trackY0_Tag);
       h1Xi_[pixelDetId]->Fill(proton_Tag.xi());
       h1XProjection_[pixelDetId]->Fill(trackX0_Tag);
@@ -477,6 +486,7 @@ void InterpotEfficiency_2017::analyze(const edm::Event &iEvent,
             CTPPSDetId(track_Probe_purity.getRPId());
 
         double trackY0_Probe_purity = track_Probe_purity.getY();
+        double trackX0_Probe_purity = track_Probe_purity.getX();
         double xi_Probe_purity = proton_Probe_purity.xi();
         int arm_Probe_purity = detId_Probe_purity.arm();
         uint32_t station_Probe_purity = detId_Probe_purity.station();
@@ -497,8 +507,30 @@ void InterpotEfficiency_2017::analyze(const edm::Event &iEvent,
           continue;
         }
 
-        if (TMath::Abs(xi_Tag - xi_Probe_purity) < xiMatch &&
-            TMath::Abs(trackY0_Tag - trackY0_Probe_purity) < yMatch) {
+        bool xiMatchPass = false;
+        bool yMatchPass = false;
+        bool xMatchPass = false;
+
+        if (arm_Tag == 0 && TMath::Abs(xi_Probe_purity - xi_Tag -
+                                       xiMatchMean45) < xiMatchWindow45)
+          xiMatchPass = true;
+        if (arm_Tag == 0 && TMath::Abs(trackY0_Probe_purity - trackY0_Tag -
+                                       yMatchMean45) < yMatchWindow45)
+          yMatchPass = true;
+        if (arm_Tag == 0 && TMath::Abs(trackX0_Probe_purity - trackX0_Tag -
+                                       xMatchMean45) < xMatchWindow45)
+          xMatchPass = true;
+        if (arm_Tag == 1 && TMath::Abs(xi_Probe_purity - xi_Tag -
+                                       xiMatchMean45) < xiMatchWindow45)
+          xiMatchPass = true;
+        if (arm_Tag == 1 && TMath::Abs(trackY0_Probe_purity - trackY0_Tag -
+                                       yMatchMean45) < yMatchWindow45)
+          yMatchPass = true;
+        if (arm_Tag == 1 && TMath::Abs(trackX0_Probe_purity - trackX0_Tag -
+                                       xMatchMean45) < xMatchWindow45)
+          xMatchPass = true;
+
+        if (xiMatchPass && xMatchPass && yMatchPass) {
           h2MatchingRate_[pixelDetId]->Fill(trackX0_Tag, trackY0_Tag);
           h1MatchingRate_[pixelDetId]->Fill(xi_Tag);
           h1XiWhenPurityMatch_[pixelDetId]->Fill(xi_Tag);
@@ -535,7 +567,7 @@ void InterpotEfficiency_2017::analyze(const edm::Event &iEvent,
       }
       continue;
     } // Stuff to be done only on proton tracks
-    // Here proton_Tag can only be a strips proton
+    // From here on out proton_Tag can only be a strips proton
 
     if (debug_)
       std::cout << "Analyzing tag track (STRIPS):\n"
@@ -596,6 +628,12 @@ void InterpotEfficiency_2017::analyze(const edm::Event &iEvent,
                    Form("h2InterPotEfficiencyMap_arm%i_st%i_rp%i;x (mm);y (mm)",
                         arm_Probe, station_Probe, rp_Probe),
                    mapXbins, mapXmin, mapXmax, mapYbins, mapYmin, mapYmax);
+      h2InterPotEfficiencyMapMultiRP_[pixelDetId] = new TH2D(
+          Form("h2InterPotEfficiencyMapMultiRP_arm%i_st%i_rp%i", arm_Probe,
+               station_Probe, rp_Probe),
+          Form("h2InterPotEfficiencyMapMultiRP_arm%i_st%i_rp%i;x (mm);y (mm)",
+               arm_Probe, station_Probe, rp_Probe),
+          mapXbins, mapXmin, mapXmax, mapYbins, mapYmin, mapYmax);
       h1InterPotEfficiencyVsXi_[pixelDetId] = new TH1D(
           Form("h1InterPotEfficiencyVsXi_arm%i_st%i_rp%i", arm_Probe,
                station_Probe, rp_Probe),
@@ -629,10 +667,40 @@ void InterpotEfficiency_2017::analyze(const edm::Event &iEvent,
           Form("h1TyMatch_arm%i_st%i_rp%i;Ty", arm_Probe, station_Probe,
                rp_Probe),
           100, -0.02, 0.02);
+      h1DeltaXiMultiRP_[pixelDetId] =
+          new TH1D(Form("h1DeltaXiMultiRP_arm%i_st%i_rp%i", arm_Probe,
+                        station_Probe, rp_Probe),
+                   Form("h1DeltaXiMultiRP_arm%i_st%i_rp%i;#Delta_{#xi}",
+                        arm_Probe, station_Probe, rp_Probe),
+                   100, -0.02, 0.02);
+      h1DeltaYMultiRP_[pixelDetId] =
+          new TH1D(Form("h1DeltaYMultiRP_arm%i_st%i_rp%i", arm_Probe,
+                        station_Probe, rp_Probe),
+                   Form("h1DeltaYMultiRP_arm%i_st%i_rp%i;#Delta_{y}", arm_Probe,
+                        station_Probe, rp_Probe),
+                   100, -5, 5);
+      h1TxMultiRP_[pixelDetId] =
+          new TH1D(Form("h1TxMultiRP_arm%i_st%i_rp%i", arm_Probe, station_Probe,
+                        rp_Probe),
+                   Form("h1TxMultiRP_arm%i_st%i_rp%i;Tx", arm_Probe,
+                        station_Probe, rp_Probe),
+                   100, -0.02, 0.02);
+      h1TyMultiRP_[pixelDetId] =
+          new TH1D(Form("h1TyMultiRP_arm%i_st%i_rp%i", arm_Probe, station_Probe,
+                        rp_Probe),
+                   Form("h1TyMultiRP_arm%i_st%i_rp%i;Ty", arm_Probe,
+                        station_Probe, rp_Probe),
+                   100, -0.02, 0.02);
       h1ProtonsInProbePotWhenNoMatchFound_[pixelDetId] =
           new TH1D(Form("h1ProtonsInProbePotWhenNoMatchFound_arm%i_st%i_rp%i",
                         arm_Probe, station_Probe, rp_Probe),
                    Form("h1ProtonsInProbePotWhenNoMatchFound_arm%i_st%i_rp%i",
+                        arm_Probe, station_Probe, rp_Probe),
+                   11, 0, 11);
+      h1ProtonsInProbePotWhenMatchFound_[pixelDetId] =
+          new TH1D(Form("h1ProtonsInProbePotWhenMatchFound_arm%i_st%i_rp%i",
+                        arm_Probe, station_Probe, rp_Probe),
+                   Form("h1ProtonsInProbePotWhenMatchFound_arm%i_st%i_rp%i",
                         arm_Probe, station_Probe, rp_Probe),
                    11, 0, 11);
       h2XCorrelationMatch_[pixelDetId] =
@@ -750,14 +818,20 @@ void InterpotEfficiency_2017::analyze(const edm::Event &iEvent,
     for (auto &multiRP_proton : *multiRP_protons) {
       if (!multiRP_proton.validFit() ||
           multiRP_proton.method() !=
-              reco::ForwardProton::ReconstructionMethod::multiRP)
+              reco::ForwardProton::ReconstructionMethod::multiRP) {
+        if (debug_)
+          std::cout << "Found INVALID multiRP proton!" << std::endl;
         continue;
+      }
 
       if (debug_) {
         std::cout << "***Analyzing multiRP proton***" << std::endl;
         std::cout << "Xi = " << multiRP_proton.xi() << std::endl;
+        std::cout << "Composed by track: " << std::endl;
       }
 
+      bool passRecoInfo = true;
+      int failRecoInfo = -1;
       for (auto &track_ptr : multiRP_proton.contributingLocalTracks()) {
         CTPPSLocalTrackLite track = *track_ptr;
         CTPPSDetId detId = CTPPSDetId(track.getRPId());
@@ -769,7 +843,6 @@ void InterpotEfficiency_2017::analyze(const edm::Event &iEvent,
         double trackTy = track.getTy();
 
         if (debug_) {
-          std::cout << "Composed by track: " << std::endl;
           std::cout << "Arm: " << arm << " Station: " << station << std::endl
                     << " X: " << trackX0 << " Y: " << trackY0
                     << " Tx: " << trackTx << " Ty: " << trackTy
@@ -777,24 +850,78 @@ void InterpotEfficiency_2017::analyze(const edm::Event &iEvent,
                     << std::endl;
         }
 
+        // Check that the matched proton has recoInfo = 0 or 2 (non shifted
+        // planes)
+        if (!passRecoInfo)
+          continue;
+        for (auto &pixeltrack : multiRP_proton.contributingLocalTracks()) {
+          if (CTPPSDetId(pixeltrack->getRPId()).station() == 2) {
+            int recoInfo = (int)pixeltrack->getPixelTrackRecoInfo();
+            if (recoInfo != 0 && recoInfo != 2) {
+              passRecoInfo = false;
+              failRecoInfo = recoInfo;
+            }
+          }
+        }
+        if (!passRecoInfo)
+          continue;
+
         if (arm == arm_Tag && station == 0 &&
-            TMath::Abs(trackX0_Tag - trackX0) < 0.1 &&
-            TMath::Abs(trackY0_Tag - trackY0) < 0.1) {
+            TMath::Abs(trackX0_Tag - trackX0) < 0.01 &&
+            TMath::Abs(trackY0_Tag - trackY0) < 0.01) {
+          if (debug_)
+            std::cout << "**MultiRP proton matched to the strips track!**"
+                      << std::endl;
           multiRPmatchFound++;
+          h2InterPotEfficiencyMapMultiRP_[pixelDetId]->Fill(
+              expectedTrackX0_Probe, expectedTrackY0_Probe);
           // Find pixel track and retrieve chi2
           for (auto &pixeltrack : multiRP_proton.contributingLocalTracks()) {
             if (CTPPSDetId(pixeltrack->getRPId()).station() == 2) {
+              double pixeltrackX0 = track.getX();
+              double pixeltrackY0 = track.getY();
+              double pixeltrackTx = track.getTx();
+              double pixeltrackTy = track.getTy();
+
+              // Find the singleRP proton to retrieve xi
+              double pixeltrackXi = 0;
+              for (auto &proton : *protons) { // Probe -> Roman Pot Under Test
+                if (!proton.validFit() ||
+                    proton.method() !=
+                        reco::ForwardProton::ReconstructionMethod::singleRP)
+                  continue;
+                CTPPSLocalTrackLite protonTrack =
+                    *(proton.contributingLocalTracks().at(0));
+                CTPPSDetId protonTrack_detId =
+                    CTPPSDetId(protonTrack.getRPId());
+                int protonTrack_arm = protonTrack_detId.arm();
+                int protonTrack_station = protonTrack_detId.station();
+                if (arm == protonTrack_arm && protonTrack_station == 2 &&
+                    TMath::Abs(protonTrack.getX() - pixeltrackX0) < 0.2 &&
+                    TMath::Abs(protonTrack.getY() - pixeltrackY0) < 0.2) {
+                  pixeltrackXi = proton.xi();
+                }
+              }
               pixeltrack_Chi2 = pixeltrack->getChiSquaredOverNDF();
               // pixeltrack->getChiSquaredOverNDF() *
               // (2 * pixeltrack->getNumberOfPointsUsedForFit() - 4);
               pixeltrack_recoInfo = (int)pixeltrack->getPixelTrackRecoInfo();
+              h1DeltaXiMultiRP_[pixelDetId]->Fill(pixeltrackXi - xi_Tag);
+              h1DeltaYMultiRP_[pixelDetId]->Fill(pixeltrackY0 - trackY0_Tag);
+              h1TxMultiRP_[pixelDetId]->Fill(trackTx);
+              h1TyMultiRP_[pixelDetId]->Fill(trackTy);
             }
           }
         }
       }
 
-      if (debug_)
+      if (debug_) {
+        if (!passRecoInfo)
+          std::cout << "WARNING: Found multiRP proton reconstructed "
+                       "using pixeltrack with recoInfo = "
+                    << failRecoInfo << "!!!" << std::endl;
         std::cout << "******************************" << std::endl;
+      }
     }
 
     int matches = 0;
@@ -825,6 +952,7 @@ void InterpotEfficiency_2017::analyze(const edm::Event &iEvent,
                   << "Arm: " << detId_Probe.arm()
                   << " Station: " << detId_Probe.station()
                   << " X: " << trackX0_Probe << " Y: " << trackY0_Probe
+                  << " Xi: " << xi_Probe
                   << " Chi2OverNDF: " << track_Probe.getChiSquaredOverNDF()
                   << "\nDeltaZ: " << deltaZ
                   << " Expected X: " << expectedTrackX0_Probe
@@ -839,45 +967,69 @@ void InterpotEfficiency_2017::analyze(const edm::Event &iEvent,
         continue;
       }
 
-      if (debug_)
-        std::cout << "Looking for CTPPSPixelLocalTrack corresponding to "
-                     "CTPPSLocalTrackLite"
-                  << std::endl;
+      // if (debug_)
+      //   std::cout << "Looking for CTPPSPixelLocalTrack corresponding to "
+      //                "CTPPSLocalTrackLite"
+      //             << std::endl;
 
-      auto rpPixelHeavyTracks = (*pixelHeavyTracks)[track_Probe.getRPId()];
-      CTPPSPixelLocalTrack associatedHeavyTrack;
-      bool associationFound = false;
-      for (auto &pixelHeavyTrack : rpPixelHeavyTracks) {
-        if (TMath::Abs(pixelHeavyTrack.getX0() - trackX0_Probe) < 0.1 &&
-            TMath::Abs(pixelHeavyTrack.getY0() - trackY0_Probe) < 0.1 &&
-            !associationFound) {
-          associatedHeavyTrack = pixelHeavyTrack;
-          associationFound = true;
-          if (debug_)
-            std::cout << "Found track to be associated" << std::endl;
-        }
-      }
+      // auto rpPixelHeavyTracks = (*pixelHeavyTracks)[track_Probe.getRPId()];
+      // CTPPSPixelLocalTrack associatedHeavyTrack;
+      // bool associationFound = false;
+      // for (auto &pixelHeavyTrack : rpPixelHeavyTracks) {
+      //   if (TMath::Abs(pixelHeavyTrack.getX0() - trackX0_Probe) < 0.1 &&
+      //       TMath::Abs(pixelHeavyTrack.getY0() - trackY0_Probe) < 0.1 &&
+      //       !associationFound) {
+      //     associatedHeavyTrack = pixelHeavyTrack;
+      //     associationFound = true;
+      //     if (debug_)
+      //       std::cout << "Found track to be associated" << std::endl;
+      //   }
+      // }
 
-      if (!associationFound) {
-        std::cout << "WARNING: No track to be associated found. Skipping event"
-                  << std::endl;
-        std::cout << "Coordinate\tTrackLite\tHeavyTrack" << std::endl;
-        std::cout << "X:\t\t" << trackX0_Probe << "\t\t"
-                  << associatedHeavyTrack.getX0() << std::endl;
-        std::cout << "Y:\t\t" << trackY0_Probe << "\t\t"
-                  << associatedHeavyTrack.getY0() << std::endl;
-        return;
-      }
+      // if (!associationFound) {
+      //   std::cout << "WARNING: No track to be associated found. Skipping
+      //   event"
+      //             << std::endl;
+      //   std::cout << "Coordinate\tTrackLite\tHeavyTrack" << std::endl;
+      //   std::cout << "X:\t\t" << trackX0_Probe << "\t\t"
+      //             << associatedHeavyTrack.getX0() << std::endl;
+      //   std::cout << "Y:\t\t" << trackY0_Probe << "\t\t"
+      //             << associatedHeavyTrack.getY0() << std::endl;
+      //   return;
+      // }
 
       h2ProtonDistributionWithStrips_[pixelDetId]->Fill(trackX0_Probe,
                                                         trackY0_Probe);
+
+      bool xiMatchPass = false;
+      bool yMatchPass = false;
+      bool xMatchPass = false;
+
+      if (arm_Tag == 0 && TMath::Abs(xi_Probe - xi_Tag - xiMatchMean45) <
+                              xiMatchWindow45)
+        xiMatchPass = true;
+      if (arm_Tag == 0 && TMath::Abs(trackY0_Probe - trackY0_Tag -
+                                     yMatchMean45) < yMatchWindow45)
+        yMatchPass = true;
+      if (arm_Tag == 0 && TMath::Abs(trackX0_Probe - trackX0_Tag -
+                                     xMatchMean45) < xMatchWindow45)
+        xMatchPass = true;
+      if (arm_Tag == 1 && TMath::Abs(xi_Probe - xi_Tag - xiMatchMean45) <
+                              xiMatchWindow45)
+        xiMatchPass = true;
+      if (arm_Tag == 1 && TMath::Abs(trackY0_Probe - trackY0_Tag -
+                                     yMatchMean45) < yMatchWindow45)
+        yMatchPass = true;
+      if (arm_Tag == 1 && TMath::Abs(trackX0_Probe - trackX0_Tag -
+                                     xMatchMean45) < xMatchWindow45)
+        xMatchPass = true;
+
       h1DeltaXiMatch_[pixelDetId]->Fill(xi_Tag - xi_Probe);
 
-      if (TMath::Abs(xi_Tag - xi_Probe) < xiMatch)
+      if (xiMatchPass)
         h1DeltaYMatch_[pixelDetId]->Fill(trackY0_Tag - trackY0_Probe);
 
-      if (TMath::Abs(xi_Tag - xi_Probe) < xiMatch &&
-          TMath::Abs(trackY0_Tag - trackY0_Probe) < yMatch) {
+      if (xiMatchPass && yMatchPass && xMatchPass) {
         matches++;
         if (matches == 1) {
           pixeltrack_Chi2 = track_Probe.getChiSquaredOverNDF();
@@ -892,12 +1044,13 @@ void InterpotEfficiency_2017::analyze(const edm::Event &iEvent,
                       << " Station: " << detId_Tag.station()
                       << " X: " << trackX0_Tag << " Y: " << trackY0_Tag
                       << " Tx: " << trackTx_Tag << " Ty: " << trackTy_Tag
-                      << std::endl;
+                      << " Xi: " << xi_Tag << std::endl;
             std::cout << "Probe track:\n"
                       << "Arm: " << detId_Probe.arm()
                       << " Station: " << detId_Probe.station()
                       << " X: " << trackX0_Probe << " Y: " << trackY0_Probe
-                      << "\nDeltaZ: " << deltaZ
+                      << " Tx: " << trackTx_Probe << " Ty: " << trackTy_Probe
+                      << " Xi: " << xi_Probe << "\nDeltaZ: " << deltaZ
                       << " Expected X: " << expectedTrackX0_Probe
                       << " Expected Y: " << expectedTrackY0_Probe
                       << " RecoInfo: "
@@ -943,6 +1096,24 @@ void InterpotEfficiency_2017::analyze(const edm::Event &iEvent,
           h1RecoInfoMatch_[pixelDetId]->Fill(
               (int)track_Probe.getPixelTrackRecoInfo());
         }
+        if (excludeMultipleMatches && matches == 2) {
+          h2InterPotEfficiencyMap_[pixelDetId]->Fill(expectedTrackX0_Probe,
+                                                     expectedTrackY0_Probe, -1);
+          h1InterPotEfficiencyVsXi_[pixelDetId]->Fill(
+              xi_Tag, -1); // xi_Tag and xi_Probe are expected to be the same
+          h1TxMatch_[pixelDetId]->Fill(trackTx_Tag, -1);
+          h1TyMatch_[pixelDetId]->Fill(trackTy_Tag, -1);
+          h2XCorrelationMatch_[pixelDetId]->Fill(trackX0_Probe, trackX0_Tag,
+                                                 -1);
+          h2YCorrelationMatch_[pixelDetId]->Fill(trackY0_Probe, trackY0_Tag,
+                                                 -1);
+          h2TxCorrelationMatch_[pixelDetId]->Fill(trackTx_Probe, trackTx_Tag,
+                                                  -1);
+          h2TyCorrelationMatch_[pixelDetId]->Fill(trackTy_Probe, trackTy_Tag,
+                                                  -1);
+          h1RecoInfoMatch_[pixelDetId]->Fill(
+              (int)track_Probe.getPixelTrackRecoInfo(), -1);
+        }
       }
     }
 
@@ -957,7 +1128,10 @@ void InterpotEfficiency_2017::analyze(const edm::Event &iEvent,
     }
     tries[pixelDetId]++;
 
-    if (matches == 1 &&
+    bool goodInterPotMatch =
+        (excludeMultipleMatches) ? matches == 1 : matches >= 1;
+
+    if (goodInterPotMatch &&
         (pixeltrack_recoInfo == recoInfoCut_ || recoInfoCut_ == -1)) {
       triesWithMatch[pixelDetId]++;
       h1Chi2WhenInterpotMatch_[pixelDetId]->Fill(pixeltrack_Chi2);
@@ -967,14 +1141,14 @@ void InterpotEfficiency_2017::analyze(const edm::Event &iEvent,
       triesWithoutMatch[pixelDetId]++;
     }
 
-    if (matches == 1 && multiRPmatchFound >= 1 &&
+    if (goodInterPotMatch && multiRPmatchFound >= 1 &&
         (pixeltrack_recoInfo == recoInfoCut_ || recoInfoCut_ == -1)) {
       multiRPfoundWhenMatchFound[pixelDetId]++;
       h1Chi2WhenInterpotMatchANDmultiRP_[pixelDetId]->Fill(pixeltrack_Chi2);
       if (debug_)
         std::cout << "*****MultiRP track found while matching!!!*****"
                   << std::endl;
-    } else if (matches == 1 &&
+    } else if (goodInterPotMatch &&
                (pixeltrack_recoInfo == recoInfoCut_ || recoInfoCut_ == -1)) {
       h1Chi2WhenInterpotMatchANDNOTmultiRP_[pixelDetId]->Fill(pixeltrack_Chi2);
       if (debug_)
@@ -990,8 +1164,10 @@ void InterpotEfficiency_2017::analyze(const edm::Event &iEvent,
                   << std::endl;
     }
 
-    if (matches == 0) {
+    if (!goodInterPotMatch) {
       h1ProtonsInProbePotWhenNoMatchFound_[pixelDetId]->Fill(protonsInProbePot);
+    } else {
+      h1ProtonsInProbePotWhenMatchFound_[pixelDetId]->Fill(protonsInProbePot);
     }
   }
   if (debug_)
@@ -1029,11 +1205,15 @@ void InterpotEfficiency_2017::endJob() {
       h1DeltaXiMatch_[rpId]->Write();
       h1DeltaYMatch_[rpId]->Write();
       h1ProtonsInProbePotWhenNoMatchFound_[rpId]->Write();
+      h1ProtonsInProbePotWhenMatchFound_[rpId]->Write();
       h1XiWhenPurityMatch_[rpId]->Write();
 
       h2InterPotEfficiencyMap_[rpId]->Divide(h2InterPotEfficiencyMap_[rpId],
                                              h2AuxProtonHitDistribution_[rpId],
                                              1., 1.);
+      h2InterPotEfficiencyMapMultiRP_[rpId]->Divide(
+          h2InterPotEfficiencyMapMultiRP_[rpId],
+          h2AuxProtonHitDistribution_[rpId], 1., 1.);
       h2MatchingRate_[rpId]->Divide(h2MatchingRate_[rpId],
                                     h2AuxMatchingRate_[rpId], 1., 1.);
       h2MatchingRate_[rpId]->Write();
@@ -1051,6 +1231,8 @@ void InterpotEfficiency_2017::endJob() {
 
       h2InterPotEfficiencyMap_[rpId]->SetMinimum(0);
       h2InterPotEfficiencyMap_[rpId]->Write();
+      h2InterPotEfficiencyMapMultiRP_[rpId]->SetMinimum(0);
+      h2InterPotEfficiencyMapMultiRP_[rpId]->Write();
       h2AuxProtonHitDistribution_[rpId]->Write();
 
       h1TxMatch_[rpId]->Write();
@@ -1073,6 +1255,10 @@ void InterpotEfficiency_2017::endJob() {
       h1Chi2WhenInterpotMatchANDmultiRP_[rpId]->Write();
       h1Chi2WhenInterpotMatchANDNOTmultiRP_[rpId]->Write();
       h1Chi2WhenNoInterpotMatchANDmultiRP_[rpId]->Write();
+      h1DeltaXiMultiRP_[rpId]->Write();
+      h1DeltaYMultiRP_[rpId]->Write();
+      h1TxMultiRP_[rpId]->Write();
+      h1TyMultiRP_[rpId]->Write();
     }
   }
   outputFile_->Close();
@@ -1109,9 +1295,9 @@ bool InterpotEfficiency_2017::Cut(CTPPSLocalTrackLite track) {
   double x = track.getX();
   double y = track.getY();
 
-  double maxTx = 0.02;
-  double maxTy = 0.02;
-  double maxChi2 = TMath::ChisquareQuantile(0.9999999, ndf);
+  double maxTx = 0.03;
+  double maxTy = 0.04;
+  double maxChi2 = TMath::ChisquareQuantile(maxChi2Prob_, ndf);
   if (station == 2) {
     if (debug_) {
       if (track.getChiSquaredOverNDF() * ndf > maxChi2)
@@ -1159,12 +1345,11 @@ bool InterpotEfficiency_2017::Cut(CTPPSLocalTrackLite track) {
     }
   } else {
     if (station == 0) {
-      // if (TMath::Abs(track.getTx()) > maxTx ||
-      //     TMath::Abs(track.getTy()) > maxTy ||
-      //     track.getChiSquaredOverNDF() * ndf > maxChi2)
-      //   return true;
-      // else
-      return false;
+      if (TMath::Abs(track.getTx()) > maxTx ||
+          TMath::Abs(track.getTy()) > maxTy)
+        return true;
+      else
+        return false;
     } else
       throw "Station is neither 0 or 2!!!";
   }

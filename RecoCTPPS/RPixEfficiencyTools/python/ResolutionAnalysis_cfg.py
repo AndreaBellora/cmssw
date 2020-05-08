@@ -19,7 +19,7 @@ process.options = cms.untracked.PSet(
     FailPath = cms.untracked.vstring('ProductNotFound','Type Mismatch')
     )
 
-process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(1000000) )
+process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(100000) )
 
 options = VarParsing.VarParsing ()
 options.register('outputFileName',
@@ -62,6 +62,11 @@ options.register('maxNumberOfCls2',
                 VarParsing.VarParsing.multiplicity.singleton,
                 VarParsing.VarParsing.varType.int,
                 "Maximum number of points having cls2")
+options.useJsonFile = False;
+options.minPointsForFit = 0;
+options.maxPointsForFit = 6;
+options.minNumberOfCls2 = 0;
+options.maxNumberOfCls2 = 99;
 options.parseArguments()
 
 import FWCore.Utilities.FileUtils as FileUtils
@@ -72,7 +77,26 @@ process.load("FWCore.MessageService.MessageLogger_cfi")
 
 process.MessageLogger = cms.Service("MessageLogger",
     destinations = cms.untracked.vstring('cout'),
-    cout = cms.untracked.PSet( threshold = cms.untracked.string('WARNING')),
+    cout = cms.untracked.PSet( 
+        optionalPSet = cms.untracked.bool(True),
+        INFO = cms.untracked.PSet(
+            limit = cms.untracked.int32(0)
+        ),
+        noTimeStamps = cms.untracked.bool(False),
+        FwkReport = cms.untracked.PSet(
+            optionalPSet = cms.untracked.bool(True),
+            reportEvery = cms.untracked.int32(1000),
+            # reportEvery = cms.untracked.int32(1),
+            limit = cms.untracked.int32(50000000)
+        ),
+        default = cms.untracked.PSet(
+            limit = cms.untracked.int32(10000000)
+        ),
+        threshold = cms.untracked.string('INFO')
+        ),
+    categories = cms.untracked.vstring(
+        "FwkReport"
+        ),
 )
 
 process.source = cms.Source("PoolSource",
@@ -93,48 +117,32 @@ if options.useJsonFile == True:
 #Every vector takes in order values for: arm0_st0_X0, arm0_st0_Y0, arm0_st2_X0, arm0_st2_Y0, arm1_st0_X0, arm1_st0_Y0, arm1_st2_X0, arm1_st2_Y0
 
 nSigmaTolerance = 5.
-firstRunOfTheYear = 314247
-lastRunPreTs1     = 317696
-lastRunPreTs2     = 322633
-lastRunOfTheYear  = 324897
+firstRunOfTheYear = 297050
+lastRunPreTs1     = 297469
+lastRunPreTs2     = 302663
+lastRunOfTheYear  = 307082
 
 runNumber=options.runNumber
 if runNumber < firstRunOfTheYear:
-    print("This run doesn't belong to 2018 data taking")
+    print("This run belongs to before 2017 data taking")
 elif runNumber <= lastRunPreTs1:
     print("Analyzing Pre-TS1 data")
-    correlationCoefficients = [0.986511,0.922616,1.00923,1.0524,0.993892,0.93067,1.00467,1.06942]
-    correlationConstants = [-37.6006,1.58184,38.165,-1.55599,-39.2032,1.84624,39.4468,-1.95123]
-    sigmas = [0.24397,0.0916029,0.16667,0.116173,0.315105,0.10588,0.231927,0.1195]
 elif runNumber <= lastRunPreTs2:
     print("Analyzing data taken between TS1 and TS2")
-    correlationCoefficients = [0.986828,0.920718,1.00917,1.08219,0.997005,0.926529,0.998374,1.07058]
-    correlationConstants = [-37.4915,0.7017,38.036,-0.7345,-38.8277,0.671142,38.9841,-0.680128]
-    sigmas = [0.2124,0.0712,0.17727,0.09359,0.34288,0.081469,0.221028,0.0978877]
 elif runNumber <= lastRunOfTheYear:
     print("Analyzing Post-TS2 data")
-    correlationCoefficients = [0.986511,0.922616,1.00923,1.0524,0.993892,0.93067,1.00467,1.06942]
-    correlationConstants = [-37.6006,1.58184,38.165,-1.55599,-39.2032,1.84624,39.4468,-1.95123]
-    sigmas = [0.24397,0.0916029,0.16667,0.116173,0.315105,0.10588,0.231927,0.1195]
+    for i in range(4):
+        fiducialYLow[i] += 1
+        fiducialYHigh[i] += 1
 elif runNumber > lastRunOfTheYear:
-    print("This run doesn't belong to 2018 data taking")
+    print("This run doesn't belong to 2017 data taking")
 
-correlationTolerances = [nSigmaTolerance * x for x in sigmas]
-
-process.demo = cms.EDAnalyzer('ResolutionTool_2018',
+process.demo = cms.EDAnalyzer('ResolutionTool_2017',
     # outputFileName=cms.untracked.string("RPixAnalysis_RecoLocalTrack_ReferenceRunAfterTS2.root"),
     outputFileName=cms.untracked.string(options.outputFileName),
     minNumberOfPlanesForEfficiency=cms.int32(3),
-    isCorrelationPlotEnabled=cms.bool(False),                       #Only enable if the estimation of the correlation between Strips and Pixel tracks is under study 
-                                                                    #(disables filling of TGraph, reducing the output file size)
-    correlationCoefficients=cms.vdouble(correlationCoefficients),
-    correlationConstants=cms.vdouble(correlationConstants),
-    correlationTolerances=cms.vdouble(correlationTolerances),
-    interPotEffMinTracksStart=cms.untracked.int32(0),
-    interPotEffMaxTracksStart=cms.untracked.int32(2),
     minTracksPerEvent=cms.int32(0),
     maxTracksPerEvent=cms.int32(99),
-    supplementaryPlots=cms.bool(True),
     binGroupingX=cms.untracked.int32(1),
     binGroupingY=cms.untracked.int32(1),
     minPointsForFit=cms.untracked.int32(options.minPointsForFit),

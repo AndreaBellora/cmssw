@@ -92,8 +92,11 @@ private:
   TH1D *h1BunchCrossing_;
   std::map<CTPPSPixelDetId, TH2D *> h2ModuleHitMap_;
   std::map<CTPPSPixelDetId, TH2D *> h2EfficiencyMap_;
+  std::map<CTPPSPixelDetId, TH1D *> h1EfficiencyVsX_;
   std::map<CTPPSPixelDetId, TH2D *> h2AuxEfficiencyMap_;
+  std::map<CTPPSPixelDetId, TH1D *> h1AuxEfficiencyVsX_;
   std::map<CTPPSPixelDetId, TH2D *> h2EfficiencyNormalizationMap_;
+  std::map<CTPPSPixelDetId, TH1D *> h1EfficiencyNormalizationMap_;
   std::map<CTPPSPixelDetId, TH2D *> h2TrackHitDistribution_;
   std::map<int, std::map<CTPPSPixelDetId, TH2D *>>
       h2TrackHitDistributionBinShift_;
@@ -283,8 +286,11 @@ EfficiencyTool_2017::~EfficiencyTool_2017() {
   for (const auto &detId : detectorIdVector_) {
     delete h2ModuleHitMap_[detId];
     delete h2EfficiencyNormalizationMap_[detId];
+    delete h1EfficiencyNormalizationMap_[detId];
     delete h2EfficiencyMap_[detId];
+    delete h1EfficiencyVsX_[detId];
     delete h2AuxEfficiencyMap_[detId];
+    delete h1AuxEfficiencyVsX_[detId];
 
     if (detId.station() == 0) {
       delete h2EfficiencyNormalizationMap_rotated[detId];
@@ -532,18 +538,36 @@ void EfficiencyTool_2017::analyze(const edm::Event &iEvent,
               Form("h2EfficiencyMap_arm%i_st%i_rp%i_pl%i; x (mm); y (mm)", arm,
                    station, rp, plane),
               mapXbins, mapXmin, mapXmax, mapYbins, mapYmin, mapYmax);
+          h1EfficiencyVsX_[planeId] = new TH1D(
+              Form("h1EfficiencyVsX_arm%i_st%i_rp%i_pl%i", arm, station, rp,
+                   plane),
+              Form("h1EfficiencyVsX_arm%i_st%i_rp%i_pl%i; x (mm)", arm,
+                   station, rp, plane),
+              mapXbins, mapXmin, mapXmax);
           h2AuxEfficiencyMap_[planeId] =
               new TH2D(Form("h2AuxEfficiencyMap_arm%i_st%i_rp%i_pl%i", arm,
                             station, rp, plane),
                        Form("h2AuxEfficiencyMap_arm%i_st%i_rp%i_pl%i", arm,
                             station, rp, plane),
                        mapXbins, mapXmin, mapXmax, mapYbins, mapYmin, mapYmax);
+          h1AuxEfficiencyVsX_[planeId] =
+              new TH1D(Form("h1AuxEfficiencyVsX_arm%i_st%i_rp%i_pl%i", arm,
+                            station, rp, plane),
+                       Form("h1AuxEfficiencyVsX_arm%i_st%i_rp%i_pl%i", arm,
+                            station, rp, plane),
+                       mapXbins, mapXmin, mapXmax);
           h2EfficiencyNormalizationMap_[planeId] =
               new TH2D(Form("h2EfficiencyNormalizationMap_arm%i_st%i_rp%i_pl%i",
                             arm, station, rp, plane),
                        Form("h2EfficiencyNormalizationMap_arm%i_st%i_rp%i_pl%i",
                             arm, station, rp, plane),
                        mapXbins, mapXmin, mapXmax, mapYbins, mapYmin, mapYmax);
+          h1EfficiencyNormalizationMap_[planeId] =
+              new TH1D(Form("h1EfficiencyNormalizationMap_arm%i_st%i_rp%i_pl%i",
+                            arm, station, rp, plane),
+                       Form("h1EfficiencyNormalizationMap_arm%i_st%i_rp%i_pl%i",
+                            arm, station, rp, plane),
+                       mapXbins, mapXmin, mapXmax);
           if (station == 0) {
             h2EfficiencyMap_rotated[planeId] = new TH2D(
                 Form("h2EfficiencyMap_rotated_arm%i_st%i_rp%i_pl%i", arm,
@@ -707,6 +731,7 @@ void EfficiencyTool_2017::analyze(const edm::Event &iEvent,
         }
         if (numberOfPointPerPlaneEff[pln] >= minNumberOfPlanesForEfficiency_) {
           h2EfficiencyNormalizationMap_[planeId]->Fill(hitX0, hitY0);
+          h1EfficiencyNormalizationMap_[planeId]->Fill(hitX0);
 
           if (station == 0) {
             h2EfficiencyNormalizationMap_rotated[planeId]->Fill(hitX0_rotated,
@@ -714,6 +739,7 @@ void EfficiencyTool_2017::analyze(const edm::Event &iEvent,
           }
           if (hitOnPlane[0].getIsRealHit()) {
             h2AuxEfficiencyMap_[planeId]->Fill(hitX0, hitY0);
+            h1AuxEfficiencyVsX_[planeId]->Fill(hitX0);
             if (station == 0) {
               h2AuxEfficiencyMap_rotated[planeId]->Fill(hitX0_rotated,
                                                         hitY0_rotated);
@@ -868,6 +894,12 @@ void EfficiencyTool_2017::endJob() {
                                     1., "B");
     h2EfficiencyMap_[detId]->SetMaximum(1.);
     h2EfficiencyMap_[detId]->Write();
+
+    h1EfficiencyVsX_[detId]->Divide(h1AuxEfficiencyVsX_[detId],
+                                    h1EfficiencyNormalizationMap_[detId], 1.,
+                                    1., "B");
+    h1EfficiencyVsX_[detId]->SetMaximum(1.);
+    h1EfficiencyVsX_[detId]->Write();
 
     if (station == 0) {
       h2EfficiencyMap_rotated[detId]->Divide(

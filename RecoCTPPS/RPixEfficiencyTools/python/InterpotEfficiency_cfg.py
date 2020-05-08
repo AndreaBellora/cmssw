@@ -43,10 +43,17 @@ options.register('maxPixelTracks',
                 VarParsing.VarParsing.multiplicity.singleton,
                 VarParsing.VarParsing.varType.int,
                 "Maximum pixel tracks in RP")
-
+options.register('maxChi2Prob',
+                '',
+                VarParsing.VarParsing.multiplicity.singleton,
+                VarParsing.VarParsing.varType.float,
+                "Maximum chi2 probability of the track")
+options.maxChi2Prob = 0.999999
 options.maxPixelTracks = 99
 options.recoInfo = -1
 options.parseArguments()
+
+print("Chi2 cut: "+str(options.maxChi2Prob))
 
 import FWCore.Utilities.FileUtils as FileUtils
 fileList = FileUtils.loadListFromFile (options.sourceFileList) 
@@ -78,7 +85,7 @@ process.MessageLogger = cms.Service("MessageLogger",
         ),
 )
 
-process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(3000000) )
+process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(-1) )
 
 process.source = cms.Source("PoolSource",
     # replace 'myfile.root' with the source file you want to use
@@ -127,6 +134,7 @@ process.demo = cms.EDAnalyzer('InterpotEfficiency_2017',
     minNumberOfPlanesForEfficiency=cms.int32(3),
     minNumberOfPlanesForTrack=cms.int32(3),
     maxNumberOfPlanesForTrack=cms.int32(6),
+    maxChi2Prob=cms.untracked.double(options.maxChi2Prob),
     minTracksPerEvent=cms.int32(0), # this affects only the proton part
     maxTracksPerEvent=cms.int32(options.maxPixelTracks), # this affects only the proton part
     binGroupingX=cms.untracked.int32(1),

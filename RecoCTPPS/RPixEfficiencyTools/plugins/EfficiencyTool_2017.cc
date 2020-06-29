@@ -496,6 +496,7 @@ void EfficiencyTool_2017::analyze(const edm::Event &iEvent,
 
       float pixelX0 = pixeltrack.getX0();
       float pixelY0 = pixeltrack.getY0();
+      std::cout << arm << " " << station << " " << pixeltrack.getZ0() << std::endl;
       int numberOfRowCls2 = 0;
       int numberOfColCls2 = 0;
       // Rotating St0 tracks
@@ -538,12 +539,12 @@ void EfficiencyTool_2017::analyze(const edm::Event &iEvent,
               Form("h2EfficiencyMap_arm%i_st%i_rp%i_pl%i; x (mm); y (mm)", arm,
                    station, rp, plane),
               mapXbins, mapXmin, mapXmax, mapYbins, mapYmin, mapYmax);
-          h1EfficiencyVsX_[planeId] = new TH1D(
-              Form("h1EfficiencyVsX_arm%i_st%i_rp%i_pl%i", arm, station, rp,
-                   plane),
-              Form("h1EfficiencyVsX_arm%i_st%i_rp%i_pl%i; x (mm)", arm,
-                   station, rp, plane),
-              mapXbins, mapXmin, mapXmax);
+          h1EfficiencyVsX_[planeId] =
+              new TH1D(Form("h1EfficiencyVsX_arm%i_st%i_rp%i_pl%i", arm,
+                            station, rp, plane),
+                       Form("h1EfficiencyVsX_arm%i_st%i_rp%i_pl%i; x (mm)", arm,
+                            station, rp, plane),
+                       mapXbins, mapXmin, mapXmax);
           h2AuxEfficiencyMap_[planeId] =
               new TH2D(Form("h2AuxEfficiencyMap_arm%i_st%i_rp%i_pl%i", arm,
                             station, rp, plane),
@@ -892,12 +893,35 @@ void EfficiencyTool_2017::endJob() {
     h2EfficiencyMap_[detId]->Divide(h2AuxEfficiencyMap_[detId],
                                     h2EfficiencyNormalizationMap_[detId], 1.,
                                     1., "B");
+    for (auto i = 1; i < h2EfficiencyMap_[detId]->GetNbinsX(); i++) {
+      for (auto j = 1; j < h2EfficiencyMap_[detId]->GetNbinsY(); j++) {
+        double efficiency = h2EfficiencyMap_[detId]->GetBinContent(i, j);
+        double tries =
+            h2EfficiencyNormalizationMap_[detId]->GetBinContent(i, j);
+        if (tries != 0) {
+          double error = TMath::Sqrt((efficiency * (1 - efficiency)) / tries);
+          h2EfficiencyMap_[detId]->SetBinError(i, j, error);
+        } else
+          h2EfficiencyMap_[detId]->SetBinError(i, j, 0);
+      }
+    }
+
     h2EfficiencyMap_[detId]->SetMaximum(1.);
     h2EfficiencyMap_[detId]->Write();
 
     h1EfficiencyVsX_[detId]->Divide(h1AuxEfficiencyVsX_[detId],
                                     h1EfficiencyNormalizationMap_[detId], 1.,
                                     1., "B");
+    for (auto i = 1; i < h1EfficiencyVsX_[detId]->GetNbinsX(); i++) {
+      double efficiency = h1EfficiencyVsX_[detId]->GetBinContent(i);
+      double tries = h1EfficiencyNormalizationMap_[detId]->GetBinContent(i);
+      if (tries != 0) {
+        double error = TMath::Sqrt((efficiency * (1 - efficiency)) / tries);
+        h1EfficiencyVsX_[detId]->SetBinError(i, error);
+      } else
+        h1EfficiencyVsX_[detId]->SetBinError(i, 0);
+    }
+
     h1EfficiencyVsX_[detId]->SetMaximum(1.);
     h1EfficiencyVsX_[detId]->Write();
 
@@ -905,6 +929,20 @@ void EfficiencyTool_2017::endJob() {
       h2EfficiencyMap_rotated[detId]->Divide(
           h2AuxEfficiencyMap_rotated[detId],
           h2EfficiencyNormalizationMap_rotated[detId], 1., 1., "B");
+      for (auto i = 1; i < h2EfficiencyMap_rotated[detId]->GetNbinsX(); i++) {
+        for (auto j = 1; j < h2EfficiencyMap_rotated[detId]->GetNbinsY(); j++) {
+          double efficiency =
+              h2EfficiencyMap_rotated[detId]->GetBinContent(i, j);
+          double tries =
+              h2EfficiencyNormalizationMap_rotated[detId]->GetBinContent(i, j);
+          if (tries != 0) {
+            double error = TMath::Sqrt((efficiency * (1 - efficiency)) / tries);
+            h2EfficiencyMap_rotated[detId]->SetBinError(i, j, error);
+          } else {
+            h2EfficiencyMap_rotated[detId]->SetBinError(i, j, 0);
+          }
+        }
+      }
       h2EfficiencyMap_rotated[detId]->SetMaximum(1.);
       h2EfficiencyMap_rotated[detId]->Write();
       if (supplementaryPlots)

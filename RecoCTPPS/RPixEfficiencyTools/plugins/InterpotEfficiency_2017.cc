@@ -121,9 +121,9 @@ private:
   float mapYmin = mapYmin_st0;
   float mapYmax = mapYmax_st0;
 
-  double xiBins = 44;
+  double xiBins = 60;
   double xiMin = 0.0;
-  double xiMax = 0.22;
+  double xiMax = 0.30;
   double angleBins = 100;
   double angleMin = -0.03;
   double angleMax = 0.03;
@@ -131,16 +131,32 @@ private:
   double chiMin = 0;
   double chiMax = 6;
 
-  double xiMatchMean45 = 0;
-  double xiMatchMean56 = 0;
+  // Cuts for 2017_UL
+  // double xiMatchMean45 = 0;
+  // double xiMatchMean56 = 0;
+  // double yMatchMean45 = 0;
+  // double yMatchMean56 = 0;
+  // double xMatchMean45 = 0;
+  // double xMatchMean56 = 0;
+  // double xiMatchWindow45 = 0.010;
+  // double xiMatchWindow56 = 0.015;
+  // double yMatchWindow45 = 99;
+  // double yMatchWindow56 = 99;
+  // double xMatchWindow45 = 99;
+  // double xMatchWindow56 = 99;
+  // bool excludeMultipleMatches = true;
+
+  // Cuts for 2017 re-MINIAOD
+  double xiMatchMean45 = +6.0695e-5;
+  double xiMatchMean56 = +8.012857e-5;
   double yMatchMean45 = 0;
-  double yMatchMean56 = 0;
+  double yMatchMean56 = -0.022612;
   double xMatchMean45 = 0;
   double xMatchMean56 = 0;
-  double xiMatchWindow45 = 0.010;
-  double xiMatchWindow56 = 0.015;
+  double xiMatchWindow45 = 5. * 0.00121;
+  double xiMatchWindow56 = 5. * 0.0020627;
   double yMatchWindow45 = 99;
-  double yMatchWindow56 = 99;
+  double yMatchWindow56 = 5. * 0.14777;
   double xMatchWindow45 = 99;
   double xMatchWindow56 = 99;
   bool excludeMultipleMatches = true;
@@ -159,6 +175,7 @@ private:
   std::map<CTPPSPixelDetId, TH2D *> h2AuxProtonHitDistribution_;
   std::map<CTPPSPixelDetId, TH2D *> h2InterPotEfficiencyMap_;
   std::map<CTPPSPixelDetId, TH2D *> h2InterPotEfficiencyMapMultiRP_;
+  std::map<CTPPSPixelDetId, TH2D *> h2XiMultiVsXiSingle_;
   std::map<CTPPSPixelDetId, TH1D *> h1AuxXi_;
   std::map<CTPPSPixelDetId, TH1D *> h1XiWhenPurityMatch_;
   std::map<CTPPSPixelDetId, TH1D *> h1InterPotEfficiencyVsXi_;
@@ -266,6 +283,7 @@ InterpotEfficiency_2017::~InterpotEfficiency_2017() {
     delete h2AuxProtonHitDistribution_[rpId];
     delete h2InterPotEfficiencyMap_[rpId];
     delete h2InterPotEfficiencyMapMultiRP_[rpId];
+    delete h2XiMultiVsXiSingle_[rpId];
     delete h1AuxXi_[rpId];
     delete h1XiWhenPurityMatch_[rpId];
     delete h1InterPotEfficiencyVsXi_[rpId];
@@ -521,13 +539,13 @@ void InterpotEfficiency_2017::analyze(const edm::Event &iEvent,
                                        xMatchMean45) < xMatchWindow45)
           xMatchPass = true;
         if (arm_Tag == 1 && TMath::Abs(xi_Probe_purity - xi_Tag -
-                                       xiMatchMean45) < xiMatchWindow45)
+                                       xiMatchMean56) < xiMatchWindow56)
           xiMatchPass = true;
         if (arm_Tag == 1 && TMath::Abs(trackY0_Probe_purity - trackY0_Tag -
-                                       yMatchMean45) < yMatchWindow45)
+                                       yMatchMean56) < yMatchWindow56)
           yMatchPass = true;
         if (arm_Tag == 1 && TMath::Abs(trackX0_Probe_purity - trackX0_Tag -
-                                       xMatchMean45) < xMatchWindow45)
+                                       xMatchMean56) < xMatchWindow56)
           xMatchPass = true;
 
         if (xiMatchPass && xMatchPass && yMatchPass) {
@@ -634,6 +652,12 @@ void InterpotEfficiency_2017::analyze(const edm::Event &iEvent,
           Form("h2InterPotEfficiencyMapMultiRP_arm%i_st%i_rp%i;x (mm);y (mm)",
                arm_Probe, station_Probe, rp_Probe),
           mapXbins, mapXmin, mapXmax, mapYbins, mapYmin, mapYmax);
+      h2XiMultiVsXiSingle_[pixelDetId] = new TH2D(
+          Form("h2XiMultiVsXiSingle_arm%i_st%i_rp%i", arm_Probe, station_Probe,
+               rp_Probe),
+          Form("h2XiMultiVsXiSingle_arm%i_st%i_rp%i;#xi_{single};#xi_{multi}",
+               arm_Probe, station_Probe, rp_Probe),
+          xiBins, xiMin, xiMax, xiBins, xiMin, xiMax);
       h1InterPotEfficiencyVsXi_[pixelDetId] = new TH1D(
           Form("h1InterPotEfficiencyVsXi_arm%i_st%i_rp%i", arm_Probe,
                station_Probe, rp_Probe),
@@ -852,19 +876,19 @@ void InterpotEfficiency_2017::analyze(const edm::Event &iEvent,
 
         // Check that the matched proton has recoInfo = 0 or 2 (non shifted
         // planes)
-        if (!passRecoInfo)
-          continue;
-        for (auto &pixeltrack : multiRP_proton.contributingLocalTracks()) {
-          if (CTPPSDetId(pixeltrack->getRPId()).station() == 2) {
-            int recoInfo = (int)pixeltrack->getPixelTrackRecoInfo();
-            if (recoInfo != 0 && recoInfo != 2) {
-              passRecoInfo = false;
-              failRecoInfo = recoInfo;
-            }
-          }
-        }
-        if (!passRecoInfo)
-          continue;
+        // if (!passRecoInfo)
+        //   continue;
+        // for (auto &pixeltrack : multiRP_proton.contributingLocalTracks()) {
+        //   if (CTPPSDetId(pixeltrack->getRPId()).station() == 2) {
+        //     int recoInfo = (int)pixeltrack->getPixelTrackRecoInfo();
+        //     if (recoInfo != 0 && recoInfo != 2) {
+        //       passRecoInfo = false;
+        //       failRecoInfo = recoInfo;
+        //     }
+        //   }
+        // }
+        // if (!passRecoInfo)
+        //   continue;
 
         if (arm == arm_Tag && station == 0 &&
             TMath::Abs(trackX0_Tag - trackX0) < 0.01 &&
@@ -875,6 +899,7 @@ void InterpotEfficiency_2017::analyze(const edm::Event &iEvent,
           multiRPmatchFound++;
           h2InterPotEfficiencyMapMultiRP_[pixelDetId]->Fill(
               expectedTrackX0_Probe, expectedTrackY0_Probe);
+          h2XiMultiVsXiSingle_[pixelDetId]->Fill(xi_Tag, multiRP_proton.xi());
           // Find pixel track and retrieve chi2
           for (auto &pixeltrack : multiRP_proton.contributingLocalTracks()) {
             if (CTPPSDetId(pixeltrack->getRPId()).station() == 2) {
@@ -1005,8 +1030,8 @@ void InterpotEfficiency_2017::analyze(const edm::Event &iEvent,
       bool yMatchPass = false;
       bool xMatchPass = false;
 
-      if (arm_Tag == 0 && TMath::Abs(xi_Probe - xi_Tag - xiMatchMean45) <
-                              xiMatchWindow45)
+      if (arm_Tag == 0 &&
+          TMath::Abs(xi_Probe - xi_Tag - xiMatchMean45) < xiMatchWindow45)
         xiMatchPass = true;
       if (arm_Tag == 0 && TMath::Abs(trackY0_Probe - trackY0_Tag -
                                      yMatchMean45) < yMatchWindow45)
@@ -1014,14 +1039,14 @@ void InterpotEfficiency_2017::analyze(const edm::Event &iEvent,
       if (arm_Tag == 0 && TMath::Abs(trackX0_Probe - trackX0_Tag -
                                      xMatchMean45) < xMatchWindow45)
         xMatchPass = true;
-      if (arm_Tag == 1 && TMath::Abs(xi_Probe - xi_Tag - xiMatchMean45) <
-                              xiMatchWindow45)
+      if (arm_Tag == 1 &&
+          TMath::Abs(xi_Probe - xi_Tag - xiMatchMean56) < xiMatchWindow56)
         xiMatchPass = true;
       if (arm_Tag == 1 && TMath::Abs(trackY0_Probe - trackY0_Tag -
-                                     yMatchMean45) < yMatchWindow45)
+                                     yMatchMean56) < yMatchWindow56)
         yMatchPass = true;
       if (arm_Tag == 1 && TMath::Abs(trackX0_Probe - trackX0_Tag -
-                                     xMatchMean45) < xMatchWindow45)
+                                     xMatchMean56) < xMatchWindow56)
         xMatchPass = true;
 
       h1DeltaXiMatch_[pixelDetId]->Fill(xi_Tag - xi_Probe);
@@ -1196,7 +1221,7 @@ void InterpotEfficiency_2017::endJob() {
         h1InterPotEfficiencyVsXi_.end()) {
 
       h1InterPotEfficiencyVsXi_[rpId]->Divide(h1InterPotEfficiencyVsXi_[rpId],
-                                              h1AuxXi_[rpId], 1., 1.);
+                                              h1AuxXi_[rpId], 1., 1., "B");
       h1InterPotEfficiencyVsXi_[rpId]->SetMaximum(1.1);
       h1InterPotEfficiencyVsXi_[rpId]->SetMinimum(0);
 
@@ -1210,15 +1235,67 @@ void InterpotEfficiency_2017::endJob() {
 
       h2InterPotEfficiencyMap_[rpId]->Divide(h2InterPotEfficiencyMap_[rpId],
                                              h2AuxProtonHitDistribution_[rpId],
-                                             1., 1.);
+                                             1., 1., "B");
+      for (auto i = 1; i < h2InterPotEfficiencyMap_[rpId]->GetNbinsX(); i++) {
+        for (auto j = 1; j < h2InterPotEfficiencyMap_[rpId]->GetNbinsY();
+             j++) {
+          double efficiency =
+              h2InterPotEfficiencyMap_[rpId]->GetBinContent(i, j);
+          double tries =
+              h2AuxProtonHitDistribution_[rpId]->GetBinContent(i, j);
+          if (tries != 0) {
+            double error = TMath::Sqrt((efficiency * (1 - efficiency)) / tries);
+            h2InterPotEfficiencyMap_[rpId]->SetBinError(i, j, error);
+          } else
+            h2InterPotEfficiencyMap_[rpId]->SetBinError(i, j, 0);
+        }
+      }
+
       h2InterPotEfficiencyMapMultiRP_[rpId]->Divide(
           h2InterPotEfficiencyMapMultiRP_[rpId],
-          h2AuxProtonHitDistribution_[rpId], 1., 1.);
+          h2AuxProtonHitDistribution_[rpId], 1., 1., "B");
+      for (auto i = 1; i < h2InterPotEfficiencyMapMultiRP_[rpId]->GetNbinsX();
+           i++) {
+        for (auto j = 1;
+             j < h2InterPotEfficiencyMapMultiRP_[rpId]->GetNbinsY(); j++) {
+          double efficiency =
+              h2InterPotEfficiencyMapMultiRP_[rpId]->GetBinContent(i, j);
+          double tries =
+              h2AuxProtonHitDistribution_[rpId]->GetBinContent(i, j);
+          if (tries != 0) {
+            double error = TMath::Sqrt((efficiency * (1 - efficiency)) / tries);
+            h2InterPotEfficiencyMapMultiRP_[rpId]->SetBinError(i, j, error);
+          } else
+            h2InterPotEfficiencyMapMultiRP_[rpId]->SetBinError(i, j, 0);
+        }
+      }
+
       h2MatchingRate_[rpId]->Divide(h2MatchingRate_[rpId],
-                                    h2AuxMatchingRate_[rpId], 1., 1.);
-      h2MatchingRate_[rpId]->Write();
+                                    h2AuxMatchingRate_[rpId], 1., 1., "B");
+      for (auto i = 1; i < h2MatchingRate_[rpId]->GetNbinsX(); i++) {
+        for (auto j = 1; j < h2MatchingRate_[rpId]->GetNbinsY(); j++) {
+          double efficiency = h2MatchingRate_[rpId]->GetBinContent(i, j);
+          double tries = h2AuxMatchingRate_[rpId]->GetBinContent(i, j);
+          if (tries != 0) {
+            double error = TMath::Sqrt((efficiency * (1 - efficiency)) / tries);
+            h2MatchingRate_[rpId]->SetBinError(i, j, error);
+          } else
+            h2MatchingRate_[rpId]->SetBinError(i, j, 0);
+        }
+      }
+
       h1MatchingRate_[rpId]->Divide(h1MatchingRate_[rpId],
-                                    h1AuxMatchingRate_[rpId], 1., 1.);
+                                    h1AuxMatchingRate_[rpId], 1., 1., "B");
+      for (auto i = 1; i < h1MatchingRate_[rpId]->GetNbinsX(); i++) {
+        double efficiency = h1MatchingRate_[rpId]->GetBinContent(i);
+        double tries = h1AuxMatchingRate_[rpId]->GetBinContent(i);
+        if (tries != 0) {
+          double error = TMath::Sqrt((efficiency * (1 - efficiency)) / tries);
+          h1MatchingRate_[rpId]->SetBinError(i, error);
+        } else
+          h1MatchingRate_[rpId]->SetBinError(i, 0);
+      }
+      h2MatchingRate_[rpId]->Write();
       h1MatchingRate_[rpId]->Write();
       h2ProtonDistributionWithNoPurityMatch_[rpId]->Write();
 
@@ -1233,6 +1310,7 @@ void InterpotEfficiency_2017::endJob() {
       h2InterPotEfficiencyMap_[rpId]->Write();
       h2InterPotEfficiencyMapMultiRP_[rpId]->SetMinimum(0);
       h2InterPotEfficiencyMapMultiRP_[rpId]->Write();
+      h2XiMultiVsXiSingle_[rpId]->Write();
       h2AuxProtonHitDistribution_[rpId]->Write();
 
       h1TxMatch_[rpId]->Write();

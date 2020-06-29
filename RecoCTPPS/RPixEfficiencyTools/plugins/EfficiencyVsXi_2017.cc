@@ -23,6 +23,8 @@
 #include <fstream>
 #include <memory>
 
+#include "FWCore/Framework/interface/ESHandle.h"
+#include "FWCore/Framework/interface/EventSetup.h"
 #include "FWCore/Framework/interface/Frameworkfwd.h"
 #include "FWCore/Framework/interface/one/EDAnalyzer.h"
 
@@ -38,6 +40,9 @@
 #include "DataFormats/ProtonReco/interface/ForwardProton.h"
 #include "DataFormats/ProtonReco/interface/ForwardProtonFwd.h"
 
+#include "CondFormats/DataRecord/interface/LHCInfoRcd.h"
+#include "CondFormats/RunInfo/interface/LHCInfo.h"
+
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 
 #include <TEfficiency.h>
@@ -49,8 +54,7 @@
 #include <TMath.h>
 #include <TObjArray.h>
 
-class EfficiencyVsXi_2017
-    : public edm::one::EDAnalyzer<edm::one::SharedResources> {
+class EfficiencyVsXi_2017 : public edm::one::EDAnalyzer<> {
 public:
   explicit EfficiencyVsXi_2017(const edm::ParameterSet &);
   ~EfficiencyVsXi_2017();
@@ -126,9 +130,9 @@ private:
   float mapYmin = mapYmin_st0;
   float mapYmax = mapYmax_st0;
 
-  double xiBins = 44;
+  double xiBins = 60;
   double xiMin = 0;
-  double xiMax = 0.22;
+  double xiMax = 0.30;
   double angleBins = 100;
   double angleMin = -0.03;
   double angleMax = 0.03;
@@ -171,10 +175,23 @@ private:
   bool useInterpotEfficiency = false;
   // Use multiRP protons
   bool useMultiRPProtons_ = false;
+
+  std::string lhcInfoLabel_;
+  double xangle_;
+
+  // Parameterize the aperture cut
+  bool apply_apertureCut = false;
+
+  // Tightest aperture for 2017
+  std::map<int, double> aperture_a = {{0, -150.}, {1, -190}};
+  std::map<int, double> aperture_Xi0 = {{0, 0.108}, {1, 0.131}};
 };
 
-EfficiencyVsXi_2017::EfficiencyVsXi_2017(const edm::ParameterSet &iConfig) {
-  usesResource("TFileService");
+using namespace std;
+using namespace edm;
+
+EfficiencyVsXi_2017::EfficiencyVsXi_2017(const edm::ParameterSet &iConfig)
+    : lhcInfoLabel_(iConfig.getParameter<std::string>("lhcInfoLabel")) {
   singleRPprotonsToken_ = consumes<reco::ForwardProtonCollection>(
       edm::InputTag("ctppsProtons", "singleRP"));
   multiRPprotonsToken_ = consumes<reco::ForwardProtonCollection>(
@@ -200,8 +217,10 @@ EfficiencyVsXi_2017::EfficiencyVsXi_2017(const edm::ParameterSet &iConfig) {
       iConfig.getUntrackedParameter<std::vector<double>>("fiducialYLow");
   fiducialYHighVector_ =
       iConfig.getUntrackedParameter<std::vector<double>>("fiducialYHigh");
-  useMultiRPEfficiency_ = iConfig.getUntrackedParameter<bool>("useMultiRPEfficiency");
-  useInterpotEfficiency = iConfig.getUntrackedParameter<bool>("useInterPotEfficiency");
+  useMultiRPEfficiency_ =
+      iConfig.getUntrackedParameter<bool>("useMultiRPEfficiency");
+  useInterpotEfficiency =
+      iConfig.getUntrackedParameter<bool>("useInterPotEfficiency");
   useMultiRPProtons_ = iConfig.getUntrackedParameter<bool>("useMultiRPProtons");
   fiducialXLow_ = {
       {std::pair<int, int>(0, 0), fiducialXLowVector_.at(0)},
@@ -248,9 +267,14 @@ void EfficiencyVsXi_2017::analyze(const edm::Event &iEvent,
                                   const edm::EventSetup &iSetup) {
   using namespace edm;
 
+  // edm::ESHandle<LHCInfo> hLHCInfo;
+  // iSetup.get<LHCInfoRcd>().get(lhcInfoLabel_, hLHCInfo);
+
   Handle<reco::ForwardProtonCollection> protons;
   if (useMultiRPEfficiency_ || useInterpotEfficiency || useMultiRPProtons_) {
+  // if (useMultiRPProtons_) {
     iEvent.getByToken(multiRPprotonsToken_, protons);
+    apply_apertureCut = true;
   } else {
     iEvent.getByToken(singleRPprotonsToken_, protons);
   }
@@ -261,6 +285,7 @@ void EfficiencyVsXi_2017::analyze(const edm::Event &iEvent,
     if (!proton.validFit())
       continue;
     CTPPSPixelDetId pixelDetId(0, 0); // initialization
+
     for (auto &track_ptr : proton.contributingLocalTracks()) {
       CTPPSLocalTrackLite track = *track_ptr;
 
@@ -283,6 +308,14 @@ void EfficiencyVsXi_2017::analyze(const edm::Event &iEvent,
       uint32_t arm = pixelDetId.arm();
       uint32_t station = pixelDetId.station();
       uint32_t rp = pixelDetId.rp();
+
+      // Impose aperture cut
+      if (apply_apertureCut &&
+          proton.xi() > aperture_a[arm] * proton.thetaX() + aperture_Xi0[arm]) {
+        if (debug_)
+          std::cout << "Aperture cut not passed!" << std::endl;
+        break;
+      }
 
       if (h1Xi_.find(pixelDetId) == h1Xi_.end()) {
         h1Xi_[pixelDetId] =

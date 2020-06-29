@@ -143,7 +143,7 @@ private:
   ;
 
   // TTree variables
-  double x_, y_, chi2OverNDF_;
+  double x_, sigmaX_, y_, sigmaY_, chi2OverNDF_;
   int nPointsUsedForFit_; // points used to reconstruct the track
   int nPlanesWithColCls2_, nPlanesWithRowCls2_;
   std::vector<int> nHitsPerPlane_; // ordered per plane number
@@ -321,7 +321,9 @@ void ResolutionTool_2017::analyze(const edm::Event &iEvent,
 
       // Fill per-track tree infos
       x_ = pixeltrack.getX0();
+      sigmaX_ = pixeltrack.getX0Sigma();
       y_ = pixeltrack.getY0();
+      sigmaY_ = pixeltrack.getY0Sigma();
       chi2OverNDF_ = pixeltrack.getChiSquaredOverNDF();
 
       for (const auto &plane : listOfPlanes_) {
@@ -496,6 +498,8 @@ void ResolutionTool_2017::analyze(const edm::Event &iEvent,
 void ResolutionTool_2017::beginJob() {
   tTracks_->Branch("x", &x_);
   tTracks_->Branch("y", &y_);
+  tTracks_->Branch("sigmaX", &sigmaX_);
+  tTracks_->Branch("sigmaY", &sigmaY_);
   tTracks_->Branch("xRefit", &xRefit_);
   tTracks_->Branch("yRefit", &yRefit_);
   tTracks_->Branch("chi2OverNDF", &chi2OverNDF_);

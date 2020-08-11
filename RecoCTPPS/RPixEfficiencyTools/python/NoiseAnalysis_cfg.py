@@ -104,10 +104,53 @@ if options.useJsonFile == True:
 
 # Fiducial region for tracks
 # RP order 0_0, 0_2, 1_0, 1_2 at the top left angle of the RP track map (for tilted pots)
+#No Cuts
+# fiducialXLow = [0,0,0,0]
+# fiducialXHigh = [99,99,99,99]
+# fiducialYLow = [-99,-99.,-99,-99]
+# fiducialYHigh = [99,99,99,99]
+
+# Cuts 2
+# fiducialXLow = [0,0,0,0]
+# fiducialXHigh = [99,13,99,13]
+# fiducialYLow = [-99,-2.,-99,-2]
+# fiducialYHigh = [99,3,99,3]
+
+# Cuts 3
+# fiducialXLow = [0,3.5,0,3.5]
+# fiducialXHigh = [99,13,99,13]
+# fiducialYLow = [-99,-2.,-99,-2]
+# fiducialYHigh = [99,3,99,3]
+
+# Cuts 4
+# fiducialXLow = [0,2.5,0,2.5]
+# fiducialXHigh = [99,13,99,13]
+# fiducialYLow = [-99,-2.,-99,-2]
+# fiducialYHigh = [99,3,99,3]
+
+# Cuts 5
 fiducialXLow = [0,0,0,0]
-fiducialXHigh = [99,99,99,99]
-fiducialYLow = [-99,-99.,-99,-99]
-fiducialYHigh = [99,99,99,99]
+fiducialXHigh = [99,8.5,99,8.5]
+fiducialYLow = [-99,-1.,-99,-1]
+fiducialYHigh = [99,3,99,3]
+
+# Cuts 6
+# fiducialXLow = [0,0,0,0]
+# fiducialXHigh = [99,3.5,99,3.5]
+# fiducialYLow = [-99,-1.,-99,-1]
+# fiducialYHigh = [99,3,99,3]
+
+# Cuts 7
+# fiducialXLow = [0,0,0,0]
+# fiducialXHigh = [99,3.5,99,3.5]
+# fiducialYLow = [-99,-1.,-99,-1]
+# fiducialYHigh = [99,3,99,3]
+
+# Good cuts
+# fiducialXLow = [0,3.5,0,3.5]
+# fiducialXHigh = [99,8.5,99,8.5]
+# fiducialYLow = [-99,-1.,-99,-1]
+# fiducialYHigh = [99,3,99,3]
 
 firstRunOfTheYear = 297050
 lastRunPreTs1     = 297469
@@ -132,8 +175,8 @@ elif runNumber > lastRunOfTheYear:
 process.demo = cms.EDAnalyzer('NoiseAnalyzer_2017',
     # outputFileName=cms.untracked.string("RPixAnalysis_RecoLocalTrack_ReferenceRunAfterTS2.root"),
     outputFileName=cms.untracked.string(options.outputFileName),
-    minNumberOfPlanesForTrack=cms.int32(6),
-    maxNumberOfPlanesForTrack=cms.int32(6),
+    minNumberOfPlanesForTrack=cms.int32(3),
+    maxNumberOfPlanesForTrack=cms.int32(3),
     maxChi2Prob=cms.untracked.double(options.maxChi2Prob),
     minTracksPerEvent=cms.int32(0), # this affects only the proton part
     maxTracksPerEvent=cms.int32(options.maxPixelTracks), # this affects only the proton part

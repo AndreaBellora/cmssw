@@ -41,6 +41,12 @@
 
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 
+// LHC Info
+#include "CondFormats/DataRecord/interface/LHCInfoRcd.h"
+#include "CondFormats/RunInfo/interface/LHCInfo.h"
+#include "FWCore/Framework/interface/ESHandle.h"
+#include "FWCore/Framework/interface/EventSetup.h"
+
 #include <TEfficiency.h>
 #include <TF1.h>
 #include <TFile.h>
@@ -49,6 +55,8 @@
 #include <TH2D.h>
 #include <TMath.h>
 #include <TObjArray.h>
+
+float Aperture(Float_t xangle, Int_t arm, TString era);
 
 class InterpotEfficiency_2017
     : public edm::one::EDAnalyzer<edm::one::SharedResources> {
@@ -65,6 +73,7 @@ private:
   bool isPlaneUsedInTrack(CTPPSPixelLocalTrack track, uint32_t plane);
 
   bool debug_ = false;
+  bool fancyBinning_ = true;
 
   // z position of the pots (mm)
   std::map<CTPPSDetId, double> Z = {
@@ -120,6 +129,18 @@ private:
   int mapYbins = mapYbins_st0;
   float mapYmin = mapYmin_st0;
   float mapYmax = mapYmax_st0;
+
+  double mapXbinSize_small = (mapXmax - mapXmin) / mapXbins;
+  double mapXbinSize_large = (mapXmax - mapXmin) / mapXbins * 2;
+
+  std::map<CTPPSPixelDetId, double> mapXbin_changeCoordinate = {
+      {CTPPSPixelDetId(0, 0, 3), 0},
+      {CTPPSPixelDetId(0, 2, 3), 13},
+      {CTPPSPixelDetId(1, 0, 3), 0},
+      {CTPPSPixelDetId(1, 2, 3), 13}};
+
+  std::map<CTPPSPixelDetId, int> nBinsX_total;
+  std::map<CTPPSPixelDetId, std::vector<double>> xBinEdges;
 
   double xiBins = 60;
   double xiMin = 0.0;
@@ -276,6 +297,25 @@ InterpotEfficiency_2017::InterpotEfficiency_2017(
   maxProtonsInPixelRPWithStrips_ =
       iConfig.getUntrackedParameter<int>("maxProtonsInPixelRP");
   debug_ = iConfig.getUntrackedParameter<bool>("debug");
+
+  // Compute binning arrays
+  for (auto detID_and_coordinate : mapXbin_changeCoordinate) {
+    CTPPSPixelDetId detId = detID_and_coordinate.first;
+    int nBinsX_small =
+        (int)((detID_and_coordinate.second - mapXmin) / mapXbinSize_small);
+    mapXbin_changeCoordinate[detId] =
+        mapXmin + nBinsX_small * mapXbinSize_small;
+    int nBinsX_large =
+        (int)((mapXmax - detID_and_coordinate.second) / mapXbinSize_large);
+    nBinsX_total[detId] = nBinsX_small + nBinsX_large;
+    for (int i = 0; i <= nBinsX_total[detId]; i++) {
+      if (i <= nBinsX_small)
+        xBinEdges[detId].push_back(i * mapXbinSize_small);
+      else
+        xBinEdges[detId].push_back(i * mapXbinSize_small +
+                                   (i - nBinsX_small) * mapXbinSize_large);
+    }
+  }
 }
 
 InterpotEfficiency_2017::~InterpotEfficiency_2017() {
@@ -331,9 +371,12 @@ void InterpotEfficiency_2017::analyze(const edm::Event &iEvent,
 
   Handle<reco::ForwardProtonCollection> multiRP_protons;
   iEvent.getByToken(multiRP_protonsToken_, multiRP_protons);
-
-  // Handle<edm::DetSetVector<CTPPSPixelLocalTrack>> pixelHeavyTracks;
-  // iEvent.getByToken(pixelHeavyTrackToken_, pixelHeavyTracks);
+  
+  // Get LHCInfo handle
+  edm::ESHandle<LHCInfo> lhcInfo;
+  iSetup.get<LHCInfoRcd>().get("", lhcInfo);
+  const LHCInfo *pLhcInfo = lhcInfo.product();
+  double xangle = pLhcInfo->crossingAngle();
 
   std::map<CTPPSPixelDetId, int> mux;
 
@@ -384,6 +427,15 @@ void InterpotEfficiency_2017::analyze(const edm::Event &iEvent,
     double trackTx_Tag = track_Tag.getTx();
     double trackTy_Tag = track_Tag.getTy();
     double xi_Tag = proton_Tag.xi();
+
+    // Apply aperture cut
+    if (debug_)
+      std::cout << "Aperture cut for arm " << arm_Tag << ": xangle = " << xangle
+                << " xiMax = " << Aperture(xangle, arm_Tag, "2018")
+                << std::endl;
+
+    // if (xi_Tag > Aperture(xangle, arm_Tag, "2018"))
+      // continue;
 
     if (detId_Tag.station() != 0) {
       // Here the tag proton can only be a pixel proton
@@ -634,24 +686,51 @@ void InterpotEfficiency_2017::analyze(const edm::Event &iEvent,
         mapYmin = mapYmin_st0;
         mapYmax = mapYmax_st0;
       }
-      h2AuxProtonHitDistribution_[pixelDetId] = new TH2D(
-          Form("h2ProtonHitExpectedDistribution_arm%i_st%i_rp%i", arm_Probe,
-               station_Probe, rp_Probe),
-          Form("h2ProtonHitExpectedDistribution_arm%i_st%i_rp%i;x (mm);y (mm)",
-               arm_Probe, station_Probe, rp_Probe),
-          mapXbins, mapXmin, mapXmax, mapYbins, mapYmin, mapYmax);
-      h2InterPotEfficiencyMap_[pixelDetId] =
-          new TH2D(Form("h2InterPotEfficiencyMap_arm%i_st%i_rp%i", arm_Probe,
-                        station_Probe, rp_Probe),
-                   Form("h2InterPotEfficiencyMap_arm%i_st%i_rp%i;x (mm);y (mm)",
-                        arm_Probe, station_Probe, rp_Probe),
-                   mapXbins, mapXmin, mapXmax, mapYbins, mapYmin, mapYmax);
-      h2InterPotEfficiencyMapMultiRP_[pixelDetId] = new TH2D(
-          Form("h2InterPotEfficiencyMapMultiRP_arm%i_st%i_rp%i", arm_Probe,
-               station_Probe, rp_Probe),
-          Form("h2InterPotEfficiencyMapMultiRP_arm%i_st%i_rp%i;x (mm);y (mm)",
-               arm_Probe, station_Probe, rp_Probe),
-          mapXbins, mapXmin, mapXmax, mapYbins, mapYmin, mapYmax);
+      if (fancyBinning_) {
+        h2AuxProtonHitDistribution_[pixelDetId] = new TH2D(
+            Form("h2ProtonHitExpectedDistribution_arm%i_st%i_rp%i", arm_Probe,
+                 station_Probe, rp_Probe),
+            Form(
+                "h2ProtonHitExpectedDistribution_arm%i_st%i_rp%i;x (mm);y (mm)",
+                arm_Probe, station_Probe, rp_Probe),
+            nBinsX_total[pixelDetId], &xBinEdges[pixelDetId][0], mapYbins,
+            mapYmin, mapYmax);
+        h2InterPotEfficiencyMap_[pixelDetId] = new TH2D(
+            Form("h2InterPotEfficiencyMap_arm%i_st%i_rp%i", arm_Probe,
+                 station_Probe, rp_Probe),
+            Form("h2InterPotEfficiencyMap_arm%i_st%i_rp%i;x (mm);y (mm)",
+                 arm_Probe, station_Probe, rp_Probe),
+            nBinsX_total[pixelDetId], &xBinEdges[pixelDetId][0], mapYbins,
+            mapYmin, mapYmax);
+        h2InterPotEfficiencyMapMultiRP_[pixelDetId] = new TH2D(
+            Form("h2InterPotEfficiencyMapMultiRP_arm%i_st%i_rp%i", arm_Probe,
+                 station_Probe, rp_Probe),
+            Form("h2InterPotEfficiencyMapMultiRP_arm%i_st%i_rp%i;x (mm);y (mm)",
+                 arm_Probe, station_Probe, rp_Probe),
+            nBinsX_total[pixelDetId], &xBinEdges[pixelDetId][0], mapYbins,
+            mapYmin, mapYmax);
+      } else {
+        h2AuxProtonHitDistribution_[pixelDetId] = new TH2D(
+            Form("h2ProtonHitExpectedDistribution_arm%i_st%i_rp%i", arm_Probe,
+                 station_Probe, rp_Probe),
+            Form(
+                "h2ProtonHitExpectedDistribution_arm%i_st%i_rp%i;x (mm);y (mm)",
+                arm_Probe, station_Probe, rp_Probe),
+            mapXbins, mapXmin, mapXmax, mapYbins, mapYmin, mapYmax);
+        h2InterPotEfficiencyMap_[pixelDetId] = new TH2D(
+            Form("h2InterPotEfficiencyMap_arm%i_st%i_rp%i", arm_Probe,
+                 station_Probe, rp_Probe),
+            Form("h2InterPotEfficiencyMap_arm%i_st%i_rp%i;x (mm);y (mm)",
+                 arm_Probe, station_Probe, rp_Probe),
+            mapXbins, mapXmin, mapXmax, mapYbins, mapYmin, mapYmax);
+        h2InterPotEfficiencyMapMultiRP_[pixelDetId] = new TH2D(
+            Form("h2InterPotEfficiencyMapMultiRP_arm%i_st%i_rp%i", arm_Probe,
+                 station_Probe, rp_Probe),
+            Form("h2InterPotEfficiencyMapMultiRP_arm%i_st%i_rp%i;x (mm);y (mm)",
+                 arm_Probe, station_Probe, rp_Probe),
+            mapXbins, mapXmin, mapXmax, mapYbins, mapYmin, mapYmax);
+      }
+
       h2XiMultiVsXiSingle_[pixelDetId] = new TH2D(
           Form("h2XiMultiVsXiSingle_arm%i_st%i_rp%i", arm_Probe, station_Probe,
                rp_Probe),
@@ -1237,12 +1316,10 @@ void InterpotEfficiency_2017::endJob() {
                                              h2AuxProtonHitDistribution_[rpId],
                                              1., 1., "B");
       for (auto i = 1; i < h2InterPotEfficiencyMap_[rpId]->GetNbinsX(); i++) {
-        for (auto j = 1; j < h2InterPotEfficiencyMap_[rpId]->GetNbinsY();
-             j++) {
+        for (auto j = 1; j < h2InterPotEfficiencyMap_[rpId]->GetNbinsY(); j++) {
           double efficiency =
               h2InterPotEfficiencyMap_[rpId]->GetBinContent(i, j);
-          double tries =
-              h2AuxProtonHitDistribution_[rpId]->GetBinContent(i, j);
+          double tries = h2AuxProtonHitDistribution_[rpId]->GetBinContent(i, j);
           if (tries != 0) {
             double error = TMath::Sqrt((efficiency * (1 - efficiency)) / tries);
             h2InterPotEfficiencyMap_[rpId]->SetBinError(i, j, error);
@@ -1251,17 +1328,26 @@ void InterpotEfficiency_2017::endJob() {
         }
       }
 
+      TEfficiency TEInterPotEfficiencyMapMultiRP =
+          TEfficiency(*h2InterPotEfficiencyMapMultiRP_[rpId],
+                      *h2AuxProtonHitDistribution_[rpId]);
+      TEInterPotEfficiencyMapMultiRP.SetNameTitle(
+          Form("TEInterPotEfficiencyMapMultiRP_arm%i_st%i_rp%i", arm, station,
+               3),
+          Form("TEInterPotEfficiencyMapMultiRP_arm%i_st%i_rp%i", arm, station,
+               3));
+      TEInterPotEfficiencyMapMultiRP.Write();
+
       h2InterPotEfficiencyMapMultiRP_[rpId]->Divide(
           h2InterPotEfficiencyMapMultiRP_[rpId],
           h2AuxProtonHitDistribution_[rpId], 1., 1., "B");
       for (auto i = 1; i < h2InterPotEfficiencyMapMultiRP_[rpId]->GetNbinsX();
            i++) {
-        for (auto j = 1;
-             j < h2InterPotEfficiencyMapMultiRP_[rpId]->GetNbinsY(); j++) {
+        for (auto j = 1; j < h2InterPotEfficiencyMapMultiRP_[rpId]->GetNbinsY();
+             j++) {
           double efficiency =
               h2InterPotEfficiencyMapMultiRP_[rpId]->GetBinContent(i, j);
-          double tries =
-              h2AuxProtonHitDistribution_[rpId]->GetBinContent(i, j);
+          double tries = h2AuxProtonHitDistribution_[rpId]->GetBinContent(i, j);
           if (tries != 0) {
             double error = TMath::Sqrt((efficiency * (1 - efficiency)) / tries);
             h2InterPotEfficiencyMapMultiRP_[rpId]->SetBinError(i, j, error);
@@ -1448,6 +1534,42 @@ bool InterpotEfficiency_2017::isPlaneUsedInTrack(CTPPSPixelLocalTrack track,
   // if this happens, it's bad
   std::cout << "WARNING: Plane not found in track" << std::endl;
   return false;
+}
+
+float Aperture(Float_t xangle, Int_t arm, TString era) {
+  float aperturelimit = 0.0;
+  if (era == "2016preTS2") {
+    if (arm == 0)
+      aperturelimit = 0.111;
+    if (arm == 1)
+      aperturelimit = 0.138;
+  }
+  if (era == "2016postTS2") {
+    if (arm == 0)
+      aperturelimit = 0.104;
+    if (arm == 1) // Note - 1 strip RP was not in, so no aperture cuts derived
+      aperturelimit = 999.9;
+  }
+  if (era == "2017preTS2") {
+    if (arm == 0)
+      aperturelimit = 0.066 + (3.54E-4 * xangle);
+    if (arm == 1)
+      aperturelimit = 0.062 + (5.96E-4 * xangle);
+  }
+  if (era == "2017postTS2") {
+    if (arm == 0)
+      aperturelimit = 0.073 + (4.11E-4 * xangle);
+    if (arm == 1)
+      aperturelimit = 0.067 + (6.87E-4 * xangle);
+  }
+  if (era == "2018") {
+    if (arm == 0)
+      aperturelimit = 0.079 + (4.21E-4 * xangle);
+    if (arm == 1)
+      aperturelimit = 0.074 + (6.6E-4 * xangle);
+  }
+
+  return aperturelimit;
 }
 
 // define this as a plug-in

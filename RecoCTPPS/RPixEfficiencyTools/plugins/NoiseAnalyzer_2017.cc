@@ -127,6 +127,13 @@ private:
   double chargeMin = 0;
   double chargeMax = 50000;
 
+  int mapRowBins = 160;
+  float mapRowMin = 0;
+  float mapRowMax = 160;
+  int mapColBins = 156;
+  float mapColMin = 0;
+  float mapColMax = 156;
+
   // Matching parameters
 
   // Cuts for 2017_UL
@@ -162,9 +169,14 @@ private:
   // output histograms
   map<CTPPSPixelDetId, TH1D *> h1ProtonMux_;
   map<CTPPSPixelDetId, TH1D *> h1AllClustersCharge_;
+  map<CTPPSPixelDetId, TH1D *> h1AllClustersChargeWhenNoProton_;
+  map<CTPPSPixelDetId, TH2D *> h2NoiseHits_;
   map<CTPPSPixelDetId, TH1D *> h1FittedClustersCharge_;
   map<CTPPSPixelDetId, TH1D *> h1MatchingTrackClustersCharge_;
+  map<CTPPSPixelDetId, TH1D *> h1MatchingTrackClustersChargeOneTrack_;
   map<CTPPSPixelDetId, TH1D *> h1NotMatchingTrackClustersCharge_;
+  map<CTPPSPixelDetId, TH1D *> h1NumberOfFakeHitsInMatchingTrack_;
+  map<CTPPSPixelDetId, TH1D *> h1NumberOfFakeHitsInNotMatchingTrack_;
 
   vector<double> fiducialXLowVector_;
   vector<double> fiducialXHighVector_;
@@ -176,6 +188,18 @@ private:
   map<pair<int, int>, double> fiducialYHigh_;
   int recoInfoCut_;
   int maxProtonsInPixelRP_;
+
+  // Noise parameters
+  int noiseThreshold = 9000;
+
+  std::map<CTPPSPixelDetId, uint32_t> numberOfFakeTracks;
+  std::map<CTPPSPixelDetId, uint32_t> matchingFakeTracks;
+  std::map<CTPPSPixelDetId, uint32_t> nonMatchingFakeTracks;
+  std::map<CTPPSPixelDetId, uint32_t> matchingRealTracks;
+  std::map<CTPPSPixelDetId, uint32_t> nonMatchingRealTracks;
+  std::map<CTPPSPixelDetId, uint32_t> numberOfTracks;
+  std::map<CTPPSPixelDetId, uint32_t> matchingTracks;
+  std::map<CTPPSPixelDetId, uint32_t> nonMatchingTracks;
 };
 
 NoiseAnalyzer_2017::NoiseAnalyzer_2017(const edm::ParameterSet &iConfig) {
@@ -238,12 +262,17 @@ NoiseAnalyzer_2017::NoiseAnalyzer_2017(const edm::ParameterSet &iConfig) {
 NoiseAnalyzer_2017::~NoiseAnalyzer_2017() {
   for (auto &rpId : romanPotIdVector_) {
     delete h1ProtonMux_[rpId];
+    delete h1NumberOfFakeHitsInMatchingTrack_[rpId];
+    delete h1NumberOfFakeHitsInNotMatchingTrack_[rpId];
   }
 
   for (auto &planeId : planeIdVector_) {
     delete h1AllClustersCharge_[planeId];
+    delete h1AllClustersChargeWhenNoProton_[planeId];
+    delete h2NoiseHits_[planeId];
     delete h1FittedClustersCharge_[planeId];
     delete h1MatchingTrackClustersCharge_[planeId];
+    delete h1MatchingTrackClustersChargeOneTrack_[planeId];
     delete h1NotMatchingTrackClustersCharge_[planeId];
   }
 }
@@ -272,6 +301,8 @@ void NoiseAnalyzer_2017::analyze(const edm::Event &iEvent,
 
   // Compute proton mux
   std::map<CTPPSPixelDetId, int> mux;
+  std::map<CTPPSPixelDetId, int> recHits_mux;
+
   for (auto &proton : *protons) {
     if (!proton.validFit() ||
         proton.method() != reco::ForwardProton::ReconstructionMethod::singleRP)
@@ -289,13 +320,46 @@ void NoiseAnalyzer_2017::analyze(const edm::Event &iEvent,
             Form("h1ProtonMux_arm%i_st%i_rp%i", arm, station, rp),
             Form("h1ProtonMux_arm%i_st%i_rp%i;Protons", arm, station, rp), 11,
             -0.5, 10.5);
+        h1NumberOfFakeHitsInMatchingTrack_[pixelDetId] = new TH1D(
+            Form("h1NumberOfFakeHitsInMatchingTrack_arm%i_st%i_rp%i", arm,
+                 station, rp),
+            Form("h1NumberOfFakeHitsInMatchingTrack_arm%i_st%i_rp%i;Protons",
+                 arm, station, rp),
+            7, 0, 7);
+        h1NumberOfFakeHitsInNotMatchingTrack_[pixelDetId] = new TH1D(
+            Form("h1NumberOfFakeHitsInNotMatchingTrack_arm%i_st%i_rp%i", arm,
+                 station, rp),
+            Form("h1NumberOfFakeHitsInNotMatchingTrack_arm%i_st%i_rp%i;Protons",
+                 arm, station, rp),
+            7, 0, 7);
+        numberOfFakeTracks[pixelDetId] = 0;
+        matchingFakeTracks[pixelDetId] = 0;
+        nonMatchingFakeTracks[pixelDetId] = 0;
+        matchingRealTracks[pixelDetId] = 0;
+        nonMatchingRealTracks[pixelDetId] = 0;
+        numberOfTracks[pixelDetId] = 0;
+        matchingTracks[pixelDetId] = 0;
+        nonMatchingTracks[pixelDetId] = 0;
       }
       mux[pixelDetId]++;
     }
   }
 
+  // Fill mux histogram
   for (auto &pixelDetId : romanPotIdVector_) {
     h1ProtonMux_[pixelDetId]->Fill(mux[pixelDetId]);
+  }
+
+  // Fill rechit mux
+  for (auto &recHitDs : *pixelRecHits) {
+    // Get the id of the plane
+    CTPPSPixelDetId recHitId = CTPPSPixelDetId(recHitDs.id);
+
+    // Make it the RP id
+    CTPPSPixelDetId pixelDetId = recHitId;
+    pixelDetId.setPlane(0);
+
+    recHits_mux[pixelDetId] += recHitDs.data.size();
   }
 
   // Analyze clusters
@@ -305,6 +369,8 @@ void NoiseAnalyzer_2017::analyze(const edm::Event &iEvent,
     int station = clusterId.station();
     int rp = clusterId.rp();
     int plane = clusterId.plane();
+    CTPPSPixelDetId rpId = CTPPSPixelDetId(arm, station, rp);
+
     if (h1AllClustersCharge_.find(clusterId) == h1AllClustersCharge_.end()) {
       planeIdVector_.push_back(clusterId);
       TString planeTag = Form("arm%i_st%i_rp%i_pl%i", arm, station, rp, plane);
@@ -312,14 +378,28 @@ void NoiseAnalyzer_2017::analyze(const edm::Event &iEvent,
           new TH1D("h1AllClustersCharge_" + planeTag,
                    "h1AllClustersCharge_" + planeTag + ";Electrons", chargeBins,
                    chargeMin, chargeMax);
+      h1AllClustersChargeWhenNoProton_[clusterId] =
+          new TH1D("h1AllClustersChargeWhenNoProton_" + planeTag,
+                   "h1AllClustersChargeWhenNoProton_" + planeTag + ";Electrons",
+                   chargeBins, chargeMin, chargeMax);
+      h2NoiseHits_[clusterId] = new TH2D(
+          "h2NoiseHits_" + planeTag, "h2NoiseHits_" + planeTag + ";Col;Row",
+          mapColMax, mapColMin, mapColMax, mapRowBins, mapRowMin, mapRowMax);
     }
+
     for (auto &cluster : clusterDs.data) {
       h1AllClustersCharge_[clusterId]->Fill(cluster.charge());
+      if (mux[rpId] == 0 && recHits_mux[rpId] < 40)
+        h1AllClustersChargeWhenNoProton_[clusterId]->Fill(cluster.charge());
+      if (cluster.charge() < 9000 && mux[rpId] == 0 && recHits_mux[rpId] < 40)
+        h2NoiseHits_[clusterId]->Fill(cluster.minPixelCol(),
+                                      cluster.minPixelRow());
     }
   }
 
   // Analyze the event
   for (auto &proton : *protons) {
+    bool skipProton = false;
     if (!proton.validFit())
       continue;
 
@@ -331,6 +411,8 @@ void NoiseAnalyzer_2017::analyze(const edm::Event &iEvent,
     double trackX0 = trackLite.getX();
     double trackY0 = trackLite.getY();
     double xi = proton.xi();
+    int numberOfPlanesUsed = trackLite.getNumberOfPointsUsedForFit();
+    int numberOfNoiseHits = 0;
 
     // Only pixel singleRP protons pass
     if (station != 2)
@@ -366,9 +448,9 @@ void NoiseAnalyzer_2017::analyze(const edm::Event &iEvent,
           *(proton_Probe.contributingLocalTracks().at(0));
       CTPPSDetId detId_Probe = CTPPSDetId(trackLite_Probe.getRPId());
 
-      // Apply the usual general-purpose cut
-      if (CutWithNoNumberOfPoints(trackLite_Probe))
-        continue;
+      // // Apply the usual general-purpose cut
+      // if (CutWithNoNumberOfPoints(trackLite_Probe))
+      //   continue;
 
       // Ask the singleRP proton to be in the same arm, different station
       if ((int)detId_Probe.arm() != arm ||
@@ -447,6 +529,10 @@ void NoiseAnalyzer_2017::analyze(const edm::Event &iEvent,
             new TH1D("h1MatchingTrackClustersCharge_" + planeTag,
                      "h1MatchingTrackClustersCharge_" + planeTag + ";Electrons",
                      chargeBins, chargeMin, chargeMax);
+        h1MatchingTrackClustersChargeOneTrack_[planeId] = new TH1D(
+            "h1MatchingTrackClustersChargeOneTrack_" + planeTag,
+            "h1MatchingTrackClustersChargeOneTrack_" + planeTag + ";Electrons",
+            chargeBins, chargeMin, chargeMax);
         h1NotMatchingTrackClustersCharge_[planeId] = new TH1D(
             "h1NotMatchingTrackClustersCharge_" + planeTag,
             "h1NotMatchingTrackClustersCharge_" + planeTag + ";Electrons",
@@ -455,7 +541,10 @@ void NoiseAnalyzer_2017::analyze(const edm::Event &iEvent,
 
       auto planeFittedHit =
           fittedHits[planeId.rawId()][0]; // There is always only one fitted hit
-      if (!planeFittedHit.getIsRealHit())
+
+      // Require the hit to be real, not on edge and not between rocs
+      if (!planeFittedHit.getIsRealHit() || planeFittedHit.isOnEdge() ||
+          planeFittedHit.spanTwoRocs())
         continue;
 
       double hitX0 = planeFittedHit.getGlobalCoordinates().x() +
@@ -494,19 +583,52 @@ void NoiseAnalyzer_2017::analyze(const edm::Event &iEvent,
         }
       }
       if (!associatedClusterFound) {
-        cout << "WARNING: no cluster associated to real fittedRecHit found!"
-             << endl;
+        if (debug_)
+          cout << "WARNING: no cluster associated to real fittedRecHit found!"
+               << endl;
         continue;
       }
 
+      // Count hits below noise threshold
+      if (cluster.charge() < noiseThreshold)
+        numberOfNoiseHits++;
+
       h1FittedClustersCharge_[planeId]->Fill(cluster.charge());
 
-      if (interPotMatch)
+      if (interPotMatch) {
         h1MatchingTrackClustersCharge_[planeId]->Fill(cluster.charge());
-      else
+        if (mux[detId] == 1)
+          h1MatchingTrackClustersChargeOneTrack_[planeId]->Fill(cluster.charge());
+      } else
         h1NotMatchingTrackClustersCharge_[planeId]->Fill(cluster.charge());
     } // for (auto &plane : listOfPlanes_)
-  }   // for (auto &proton : *protons)
+
+    if (interPotMatch)
+      h1NumberOfFakeHitsInMatchingTrack_[detId]->Fill(numberOfNoiseHits);
+    else
+      h1NumberOfFakeHitsInNotMatchingTrack_[detId]->Fill(numberOfNoiseHits);
+
+    // Fake track definition!
+    if (numberOfNoiseHits > numberOfPlanesUsed / 2) {
+      numberOfFakeTracks[detId]++;
+      if (interPotMatch)
+        matchingFakeTracks[detId]++;
+      else
+        nonMatchingFakeTracks[detId]++;
+    } else {
+      if (interPotMatch)
+        matchingRealTracks[detId]++;
+      else
+        nonMatchingRealTracks[detId]++;
+    }
+
+    if (interPotMatch)
+      matchingTracks[detId]++;
+    else
+      nonMatchingTracks[detId]++;
+
+    numberOfTracks[detId]++;
+  } // for (auto &proton : *protons)
 }
 
 void NoiseAnalyzer_2017::endJob() {
@@ -520,7 +642,39 @@ void NoiseAnalyzer_2017::endJob() {
 
     if (h1ProtonMux_.find(rpId) != h1ProtonMux_.end()) {
       h1ProtonMux_[rpId]->Write();
+      h1NumberOfFakeHitsInMatchingTrack_[rpId]->Write();
+      h1NumberOfFakeHitsInNotMatchingTrack_[rpId]->Write();
     }
+
+    // Print fake rates
+    cout << "Arm " << arm << " Station " << station << endl;
+    cout << "Matching rate: "
+         << ((double)matchingTracks[rpId] / numberOfTracks[rpId]) * 100 << " % "
+         << endl;
+    cout << "Fake rate: "
+         << ((double)numberOfFakeTracks[rpId] / numberOfTracks[rpId]) * 100
+         << " %" << endl;
+    cout << "Between fake tracks: " << endl
+         << "Matching: "
+         << ((double)matchingFakeTracks[rpId] / numberOfFakeTracks[rpId]) * 100
+         << " %" << endl
+         << "Non matching: "
+         << ((double)nonMatchingFakeTracks[rpId] / numberOfFakeTracks[rpId]) *
+                100
+         << " %" << endl;
+    cout << "Between real tracks: " << endl
+         << "Matching: "
+         << ((double)matchingRealTracks[rpId] /
+             (numberOfTracks[rpId] - numberOfFakeTracks[rpId])) *
+                100
+         << " %" << endl
+         << "Non matching: "
+         << ((double)nonMatchingRealTracks[rpId] /
+             (numberOfTracks[rpId] - numberOfFakeTracks[rpId])) *
+                100
+         << " %" << endl;
+
+    cout << endl;
   }
 
   for (auto &planeId : planeIdVector_) {
@@ -535,8 +689,11 @@ void NoiseAnalyzer_2017::endJob() {
 
     if (h1AllClustersCharge_.find(planeId) != h1AllClustersCharge_.end()) {
       h1AllClustersCharge_[planeId]->Write();
+      h1AllClustersChargeWhenNoProton_[planeId]->Write();
+      h2NoiseHits_[planeId]->Write();
       h1FittedClustersCharge_[planeId]->Write();
       h1MatchingTrackClustersCharge_[planeId]->Write();
+      h1MatchingTrackClustersChargeOneTrack_[planeId]->Write();
       h1NotMatchingTrackClustersCharge_[planeId]->Write();
     }
   }
@@ -581,7 +738,8 @@ bool NoiseAnalyzer_2017::Cut(CTPPSLocalTrackLite track) {
         track.getNumberOfPointsUsedForFit() > maxNumberOfPlanesForTrack_ ||
         y > fiducialYHigh_[pair<int, int>(arm, station)] ||
         y < fiducialYLow_[pair<int, int>(arm, station)] ||
-        x < fiducialXLow_[pair<int, int>(arm, station)])
+        x < fiducialXLow_[pair<int, int>(arm, station)] ||
+        x > fiducialXHigh_[pair<int, int>(arm, station)])
       return true;
     else {
       if (recoInfoCut_ != 5) {

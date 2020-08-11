@@ -85,7 +85,11 @@ process.MessageLogger = cms.Service("MessageLogger",
         ),
 )
 
-process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(-1) )
+process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_cff')
+from Configuration.AlCa.GlobalTag import GlobalTag
+process.GlobalTag = GlobalTag(process.GlobalTag, "106X_dataRun2_v26")
+
+process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(1000000) )
 
 process.source = cms.Source("PoolSource",
     # replace 'myfile.root' with the source file you want to use

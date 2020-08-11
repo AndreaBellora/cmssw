@@ -16,7 +16,8 @@ else
 		# addJSON=" useJsonFile=true jsonFileName=/eos/project-c/ctpps/Operations/DataExternalConditions/2017/combined_RPIN_CMS_EraF2_TimingIn.json"
 		# addJSON=" useJsonFile=true jsonFileName=/afs/cern.ch/user/a/abellora/Work/CT-PPS/2017_EfficiencyTool/CMSSW_10_6_10/src/RecoCTPPS/RPixEfficiencyTools/test/JSONFiles/EraB_simMultiRP_realDataCheck.json"
 		
-		fileSuffix="_6PlanesTracks"
+		fileSuffix="_3PlanesTracks_fiducialRegion5"
+		# fileSuffix="_3PlanesTracks"
 	fi
 	eval "cmsRun python/NoiseAnalysis_cfg.py sourceFileList=InputFiles/Era${1}.dat outputFileName=OutputFiles/Era${1}_noise${fileSuffix}.root maxPixelTracks=1 $addJSON"
 fi

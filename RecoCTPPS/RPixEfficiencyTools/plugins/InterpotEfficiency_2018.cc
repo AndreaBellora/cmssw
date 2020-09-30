@@ -40,6 +40,12 @@
 
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 
+// LHC Info
+#include "CondFormats/DataRecord/interface/LHCInfoRcd.h"
+#include "CondFormats/RunInfo/interface/LHCInfo.h"
+#include "FWCore/Framework/interface/ESHandle.h"
+#include "FWCore/Framework/interface/EventSetup.h"
+
 #include <TEfficiency.h>
 #include <TF1.h>
 #include <TFile.h>
@@ -48,6 +54,8 @@
 #include <TH2D.h>
 #include <TMath.h>
 #include <TObjArray.h>
+
+float Aperture(Float_t xangle, Int_t arm, TString era);
 
 class InterpotEfficiency_2018
     : public edm::one::EDAnalyzer<edm::one::SharedResources> {
@@ -63,6 +71,7 @@ private:
   bool Cut(CTPPSLocalTrackLite track);
 
   bool debug_ = false;
+  bool fancyBinning_ = false;
 
   // z position of the pots (mm)
   std::map<CTPPSDetId, double> Z = {
@@ -82,6 +91,7 @@ private:
   uint32_t maxTracksInTagPot = 99;
   uint32_t maxTracksInProbePot = 99;
   double maxChi2Prob_;
+  std::string producerTag;
 
   // Configs
   std::vector<uint32_t> listOfArms_ = {0, 1};
@@ -115,6 +125,18 @@ private:
   float mapYmin = mapYmin_st0;
   float mapYmax = mapYmax_st0;
 
+  double mapXbinSize_small = (mapXmax - mapXmin) / mapXbins;
+  double mapXbinSize_large = (mapXmax - mapXmin) / mapXbins * 2;
+
+  std::map<CTPPSPixelDetId, double> mapXbin_changeCoordinate = {
+      {CTPPSPixelDetId(0, 0, 3), 13},
+      {CTPPSPixelDetId(0, 2, 3), 13},
+      {CTPPSPixelDetId(1, 0, 3), 13},
+      {CTPPSPixelDetId(1, 2, 3), 13}};
+
+  std::map<CTPPSPixelDetId, int> nBinsX_total;
+  std::map<CTPPSPixelDetId, std::vector<double>> xBinEdges;
+
   double xiBins = 41;
   double xiMin = 0;
   double xiMax = 0.22;
@@ -122,15 +144,19 @@ private:
   double angleMin = -0.03;
   double angleMax = 0.03;
 
-  // Maximum difference between xi measurements of the same proton
-  // double xiMatch = 0.007;
-  // double yMatch = 1;
-  double xiMatch45 = 0.005;
-  // double xiMatch45 = 0.007;
-  double xiMatch56 = 0.01;
-  // double xiMatch56 = 0.007;
-  double yMatch = 1;
-  bool excludeMultipleMatches = false;
+  double xiMatchMean45 = 0;
+  double xiMatchMean56 = 0;
+  double yMatchMean45 = 0;
+  double yMatchMean56 = 0;
+  double xMatchMean45 = 0;
+  double xMatchMean56 = 0;
+  double xiMatchWindow45 = 0.010;
+  double xiMatchWindow56 = 0.015;
+  double yMatchWindow45 = 99;
+  double yMatchWindow56 = 99;
+  double xMatchWindow45 = 99;
+  double xMatchWindow56 = 99;
+  bool excludeMultipleMatches = true;
 
   // Number of times that a Tag proton matched more than one Probe
   std::map<CTPPSPixelDetId, uint32_t> overmatches;
@@ -177,17 +203,21 @@ private:
 InterpotEfficiency_2018::InterpotEfficiency_2018(
     const edm::ParameterSet &iConfig) {
   usesResource("TFileService");
+
+  producerTag = iConfig.getUntrackedParameter<std::string>("producerTag");
+
   protonsToken_ = consumes<reco::ForwardProtonCollection>(
-      edm::InputTag("ctppsProtons", "singleRP"));
+      edm::InputTag("ctppsProtons", "singleRP", producerTag));
   multiRP_protonsToken_ = consumes<reco::ForwardProtonCollection>(
-      edm::InputTag("ctppsProtons", "multiRP"));
+      edm::InputTag("ctppsProtons", "multiRP", producerTag));
 
   outputFileName_ =
       iConfig.getUntrackedParameter<std::string>("outputFileName");
   minNumberOfPlanesForTrack_ =
       iConfig.getUntrackedParameter<int>("minNumberOfPlanesForTrack");
   maxTracksInTagPot = iConfig.getUntrackedParameter<int>("maxTracksInTagPot");
-  maxTracksInProbePot = iConfig.getUntrackedParameter<int>("maxTracksInProbePot");
+  maxTracksInProbePot =
+      iConfig.getUntrackedParameter<int>("maxTracksInProbePot");
   maxChi2Prob_ = iConfig.getUntrackedParameter<double>("maxChi2Prob");
 
   binGroupingX = iConfig.getUntrackedParameter<int>("binGroupingX"); // UNUSED!
@@ -218,6 +248,25 @@ InterpotEfficiency_2018::InterpotEfficiency_2018(
   };
   recoInfoCut_ = iConfig.getUntrackedParameter<int>("recoInfo");
   debug_ = iConfig.getUntrackedParameter<bool>("debug");
+
+  // Compute binning arrays
+  for (auto detID_and_coordinate : mapXbin_changeCoordinate) {
+    CTPPSPixelDetId detId = detID_and_coordinate.first;
+    int nBinsX_small =
+        (int)((detID_and_coordinate.second - mapXmin) / mapXbinSize_small);
+    mapXbin_changeCoordinate[detId] =
+        mapXmin + nBinsX_small * mapXbinSize_small;
+    int nBinsX_large =
+        (int)((mapXmax - detID_and_coordinate.second) / mapXbinSize_large);
+    nBinsX_total[detId] = nBinsX_small + nBinsX_large;
+    for (int i = 0; i <= nBinsX_total[detId]; i++) {
+      if (i <= nBinsX_small)
+        xBinEdges[detId].push_back(i * mapXbinSize_small);
+      else
+        xBinEdges[detId].push_back(i * mapXbinSize_small +
+                                   (i - nBinsX_small) * mapXbinSize_large);
+    }
+  }
 }
 
 InterpotEfficiency_2018::~InterpotEfficiency_2018() {
@@ -249,6 +298,12 @@ void InterpotEfficiency_2018::analyze(const edm::Event &iEvent,
 
   Handle<reco::ForwardProtonCollection> multiRP_protons;
   iEvent.getByToken(multiRP_protonsToken_, multiRP_protons);
+
+  // Get LHCInfo handle
+  edm::ESHandle<LHCInfo> lhcInfo;
+  iSetup.get<LHCInfoRcd>().get("", lhcInfo);
+  const LHCInfo *pLhcInfo = lhcInfo.product();
+  double xangle = pLhcInfo->crossingAngle();
 
   trackMux_.clear();
   for (auto &proton_Tag : *protons) {
@@ -294,6 +349,15 @@ void InterpotEfficiency_2018::analyze(const edm::Event &iEvent,
     // if (detId_Tag.station() != 0) // use as Tag only the strips RPs
     //   continue;
 
+    // Apply aperture cut
+    if (debug_)
+      std::cout << "Aperture cut for arm " << arm_Tag << ": xangle = " << xangle
+                << " xiMax = " << Aperture(xangle, arm_Tag, "2018")
+                << std::endl;
+
+    // if (xi_Tag > Aperture(xangle, arm_Tag, "2018"))
+    // continue;
+
     // Apply the cuts
     if (Cut(track_Tag))
       continue;
@@ -336,19 +400,51 @@ void InterpotEfficiency_2018::analyze(const edm::Event &iEvent,
         mapYmin = mapYmin_st0;
         mapYmax = mapYmax_st0;
       }
-      h2AuxProtonHitDistribution_[pixelDetId] = new TH2D(
-          Form("h2AuxProtonHitDistribution_arm%i_st%i_rp%i", arm_Probe,
-               station_Probe, rp_Probe),
-          Form("h2AuxProtonHitDistribution_arm%i_st%i_rp%i;x (mm);y (mm)",
-               arm_Probe, station_Probe, rp_Probe),
-          mapXbins, mapXmin, mapXmax, mapYbins, mapYmin, mapYmax);
-      h2InterPotEfficiencyMap_[pixelDetId] =
-          new TH2D(Form("h2InterPotEfficiencyMap_arm%i_st%i_rp%i", arm_Probe,
-                        station_Probe, rp_Probe),
-                   Form("h2InterPotEfficiencyMap_arm%i_st%i_rp%i;x (mm);y (mm)",
-                        arm_Probe, station_Probe, rp_Probe),
-                   mapXbins, mapXmin, mapXmax, mapYbins, mapYmin, mapYmax);
 
+      if (fancyBinning_) {
+        h2AuxProtonHitDistribution_[pixelDetId] = new TH2D(
+            Form("h2ProtonHitExpectedDistribution_arm%i_st%i_rp%i", arm_Probe,
+                 station_Probe, rp_Probe),
+            Form(
+                "h2ProtonHitExpectedDistribution_arm%i_st%i_rp%i;x (mm);y (mm)",
+                arm_Probe, station_Probe, rp_Probe),
+            nBinsX_total[pixelDetId], &xBinEdges[pixelDetId][0], mapYbins,
+            mapYmin, mapYmax);
+        h2InterPotEfficiencyMap_[pixelDetId] = new TH2D(
+            Form("h2InterPotEfficiencyMap_arm%i_st%i_rp%i", arm_Probe,
+                 station_Probe, rp_Probe),
+            Form("h2InterPotEfficiencyMap_arm%i_st%i_rp%i;x (mm);y (mm)",
+                 arm_Probe, station_Probe, rp_Probe),
+            nBinsX_total[pixelDetId], &xBinEdges[pixelDetId][0], mapYbins,
+            mapYmin, mapYmax);
+        h2InterPotEfficiencyMapMultiRP_[pixelDetId] = new TH2D(
+            Form("h2InterPotEfficiencyMapMultiRP_arm%i_st%i_rp%i", arm_Probe,
+                 station_Probe, rp_Probe),
+            Form("h2InterPotEfficiencyMapMultiRP_arm%i_st%i_rp%i;x (mm);y (mm)",
+                 arm_Probe, station_Probe, rp_Probe),
+            nBinsX_total[pixelDetId], &xBinEdges[pixelDetId][0], mapYbins,
+            mapYmin, mapYmax);
+      } else {
+        h2AuxProtonHitDistribution_[pixelDetId] = new TH2D(
+            Form("h2ProtonHitExpectedDistribution_arm%i_st%i_rp%i", arm_Probe,
+                 station_Probe, rp_Probe),
+            Form(
+                "h2ProtonHitExpectedDistribution_arm%i_st%i_rp%i;x (mm);y (mm)",
+                arm_Probe, station_Probe, rp_Probe),
+            mapXbins, mapXmin, mapXmax, mapYbins, mapYmin, mapYmax);
+        h2InterPotEfficiencyMap_[pixelDetId] = new TH2D(
+            Form("h2InterPotEfficiencyMap_arm%i_st%i_rp%i", arm_Probe,
+                 station_Probe, rp_Probe),
+            Form("h2InterPotEfficiencyMap_arm%i_st%i_rp%i;x (mm);y (mm)",
+                 arm_Probe, station_Probe, rp_Probe),
+            mapXbins, mapXmin, mapXmax, mapYbins, mapYmin, mapYmax);
+        h2InterPotEfficiencyMapMultiRP_[pixelDetId] = new TH2D(
+            Form("h2InterPotEfficiencyMapMultiRP_arm%i_st%i_rp%i", arm_Probe,
+                 station_Probe, rp_Probe),
+            Form("h2InterPotEfficiencyMapMultiRP_arm%i_st%i_rp%i;x (mm);y (mm)",
+                 arm_Probe, station_Probe, rp_Probe),
+            mapXbins, mapXmin, mapXmax, mapYbins, mapYmin, mapYmax);
+      }
       h1InterPotEfficiencyVsXi_[pixelDetId] = new TH1D(
           Form("h1InterPotEfficiencyVsXi_arm%i_st%i_rp%i", arm_Probe,
                station_Probe, rp_Probe),
@@ -413,12 +509,6 @@ void InterpotEfficiency_2018::analyze(const edm::Event &iEvent,
                         "pixel (mm)",
                         arm_Probe, station_Probe, rp_Probe),
                    100, -0.01, 0.01, 100, -0.01, 0.01);
-      h2InterPotEfficiencyMapMultiRP_[pixelDetId] = new TH2D(
-          Form("h2InterPotEfficiencyMapMultiRP_arm%i_st%i_rp%i", arm_Probe,
-               station_Probe, rp_Probe),
-          Form("h2InterPotEfficiencyMapMultiRP_arm%i_st%i_rp%i;x (mm);y (mm)",
-               arm_Probe, station_Probe, rp_Probe),
-          mapXbins, mapXmin, mapXmax, mapYbins, mapYmin, mapYmax);
     }
 
     for (auto &proton_Probe : *protons) { // Probe -> Roman Pot Under Test
@@ -446,16 +536,34 @@ void InterpotEfficiency_2018::analyze(const edm::Event &iEvent,
         continue;
 
       bool xiMatchPass = false;
-      if (arm_Tag == 0 && TMath::Abs(xi_Tag - xi_Probe) < xiMatch45)
+      bool yMatchPass = false;
+      bool xMatchPass = false;
+
+      // Make it so that the difference is always NEAR - FAR
+      double xiDiff =
+          (station_Tag == 0) ? xi_Tag - xi_Probe : xi_Probe - xi_Tag;
+      double xDiff = (station_Tag == 0) ? trackX0_Tag - trackX0_Probe
+                                        : trackX0_Probe - trackX0_Tag;
+      double yDiff = (station_Tag == 0) ? trackY0_Tag - trackY0_Probe
+                                        : trackY0_Probe - trackY0_Tag;
+      if (arm_Tag == 0 && TMath::Abs(xiDiff - xiMatchMean45) < xiMatchWindow45)
         xiMatchPass = true;
-      if (arm_Tag == 1 && TMath::Abs(xi_Tag - xi_Probe) < xiMatch56)
+      if (arm_Tag == 0 && TMath::Abs(yDiff - yMatchMean45) < yMatchWindow45)
+        yMatchPass = true;
+      if (arm_Tag == 0 && TMath::Abs(xDiff - xMatchMean45) < xMatchWindow45)
+        xMatchPass = true;
+      if (arm_Tag == 1 && TMath::Abs(xiDiff - xiMatchMean56) < xiMatchWindow56)
         xiMatchPass = true;
+      if (arm_Tag == 1 && TMath::Abs(yDiff - yMatchMean56) < yMatchWindow56)
+        yMatchPass = true;
+      if (arm_Tag == 1 && TMath::Abs(xDiff - xMatchMean56) < xMatchWindow56)
+        xMatchPass = true;
 
       h1DeltaXiMatch_[pixelDetId]->Fill(xi_Tag - xi_Probe);
 
       if (xiMatchPass) {
         h1DeltaYMatch_[pixelDetId]->Fill(trackY0_Tag - trackY0_Probe);
-        if (TMath::Abs(trackY0_Tag - trackY0_Probe) < yMatch) {
+        if (xMatchPass && yMatchPass) {
           matches++;
           if (debug_) {
             std::cout << "********MATCH FOUND********" << std::endl;
@@ -548,7 +656,7 @@ void InterpotEfficiency_2018::analyze(const edm::Event &iEvent,
             TMath::Abs(trackX0_Tag - trackX0) < 0.01 &&
             TMath::Abs(trackY0_Tag - trackY0) < 0.01) {
           if (debug_)
-            std::cout << "**MultiRP proton matched to the strips track!**"
+            std::cout << "**MultiRP proton matched to the tag track!**"
                       << std::endl;
           multiRPmatchFound++;
           h2InterPotEfficiencyMapMultiRP_[pixelDetId]->Fill(
@@ -619,11 +727,13 @@ void InterpotEfficiency_2018::endJob() {
                                              h2AuxProtonHitDistribution_[rpId],
                                              1., 1.);
       h2InterPotEfficiencyMap_[rpId]->SetMinimum(0);
+      h2InterPotEfficiencyMap_[rpId]->SetMaximum(1);
       h2InterPotEfficiencyMap_[rpId]->Write();
       h2InterPotEfficiencyMapMultiRP_[rpId]->Divide(
           h2InterPotEfficiencyMapMultiRP_[rpId],
           h2AuxProtonHitDistribution_[rpId], 1., 1.);
       h2InterPotEfficiencyMapMultiRP_[rpId]->SetMinimum(0);
+      h2InterPotEfficiencyMapMultiRP_[rpId]->SetMaximum(1);
       h2InterPotEfficiencyMapMultiRP_[rpId]->Write();
       h2AuxProtonHitDistribution_[rpId]->Write();
 
@@ -712,6 +822,42 @@ bool InterpotEfficiency_2018::Cut(CTPPSLocalTrackLite track) {
     } else
       return false;
   }
+}
+
+float Aperture(Float_t xangle, Int_t arm, TString era) {
+  float aperturelimit = 0.0;
+  if (era == "2016preTS2") {
+    if (arm == 0)
+      aperturelimit = 0.111;
+    if (arm == 1)
+      aperturelimit = 0.138;
+  }
+  if (era == "2016postTS2") {
+    if (arm == 0)
+      aperturelimit = 0.104;
+    if (arm == 1) // Note - 1 strip RP was not in, so no aperture cuts derived
+      aperturelimit = 999.9;
+  }
+  if (era == "2017preTS2") {
+    if (arm == 0)
+      aperturelimit = 0.066 + (3.54E-4 * xangle);
+    if (arm == 1)
+      aperturelimit = 0.062 + (5.96E-4 * xangle);
+  }
+  if (era == "2017postTS2") {
+    if (arm == 0)
+      aperturelimit = 0.073 + (4.11E-4 * xangle);
+    if (arm == 1)
+      aperturelimit = 0.067 + (6.87E-4 * xangle);
+  }
+  if (era == "2018") {
+    if (arm == 0)
+      aperturelimit = 0.079 + (4.21E-4 * xangle);
+    if (arm == 1)
+      aperturelimit = 0.074 + (6.6E-4 * xangle);
+  }
+
+  return aperturelimit;
 }
 
 // define this as a plug-in

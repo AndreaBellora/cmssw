@@ -44,12 +44,29 @@ options.register('jsonFileName',
                 VarParsing.VarParsing.multiplicity.singleton,
                 VarParsing.VarParsing.varType.string,
                 "JSON file list name")
-options.register('useMultiRP',
-                False,
+options.register('useMultiRPEfficiency',
+                '',
                 VarParsing.VarParsing.multiplicity.singleton,
                 VarParsing.VarParsing.varType.bool,
-                "Use multiRP efficiency instead of InterpotEfficiencyMap")
+                "Use multiRP efficiency instead of refinedEfficiencyMap")
+options.register('useInterPotEfficiency',
+                '',
+                VarParsing.VarParsing.multiplicity.singleton,
+                VarParsing.VarParsing.varType.bool,
+                "Use interpot efficiency instead of refinedEfficiencyMap")
+options.register('useMultiRPProtons',
+                '',
+                VarParsing.VarParsing.multiplicity.singleton,
+                VarParsing.VarParsing.varType.bool,
+                "Use multiRP protons")
+options.useInterPotEfficiency = False
+options.useMultiRPEfficiency = False
+options.useMultiRPProtons = False
 options.parseArguments()
+
+if (options.useInterPotEfficiency & options.useMultiRPEfficiency):
+    print("ERROR: useMultiRPEfficiency and useInterPotEfficiency cannot be true at the same time!")
+    sys.exit(1)
 
 import FWCore.Utilities.FileUtils as FileUtils
 fileList = FileUtils.loadListFromFile (options.sourceFileList) 
@@ -80,7 +97,7 @@ process.MessageLogger = cms.Service("MessageLogger",
         ),
 )
 
-process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(1000000) )
+process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(-1) )
 
 process.source = cms.Source("PoolSource",
     # replace 'myfile.root' with the source file you want to use
@@ -213,7 +230,10 @@ process.demo = cms.EDAnalyzer('EfficiencyVsXi_2018',
     fiducialXHigh=cms.untracked.vdouble(fiducialXHigh),
     fiducialYLow=cms.untracked.vdouble(fiducialYLow),
     fiducialYHigh=cms.untracked.vdouble(fiducialYHigh),
-    useMultiRP=cms.untracked.bool(options.useMultiRP)
+    useMultiRPEfficiency=cms.untracked.bool(options.useMultiRPEfficiency),
+    useInterPotEfficiency=cms.untracked.bool(options.useInterPotEfficiency),
+    useMultiRPProtons=cms.untracked.bool(options.useMultiRPProtons),
+    producerTag=cms.untracked.string("ReMiniAOD")
 )
 
 process.p = cms.Path(process.demo)

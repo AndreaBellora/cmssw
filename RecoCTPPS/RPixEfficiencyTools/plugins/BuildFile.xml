@@ -9,10 +9,11 @@
 
 <use name="CondFormats/CTPPSReadoutObjects"/>
 <use name="CondFormats/DataRecord"/>
+<use name="CondFormats/RunInfo"/>
 <use name="Geometry/Records"/>
 <use name="Geometry/VeryForwardGeometryBuilder"/>
-
 <use name="RecoCTPPS/PixelLocal"/>
+
 <library name="RecoCTPPSRPixEfficiencyToolsPlugins" file="*.cc">
 <flags EDM_PLUGIN="1"/>
 </library>

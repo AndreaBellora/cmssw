@@ -82,7 +82,8 @@ private:
       {CTPPSDetId(4, 1, 2, 3), 219550}}; // pixels, arm1, station2, rp3
 
   // Data to get
-  edm::EDGetTokenT<reco::ForwardProtonCollection> protonsToken_;
+  edm::EDGetTokenT<reco::ForwardProtonCollection> singleRPprotonsToken_;
+  edm::EDGetTokenT<reco::ForwardProtonCollection> multiRPprotonsToken_;
 
   // Parameter set
   std::string efficiencyFileName_;
@@ -92,6 +93,7 @@ private:
   int maxNumberOfPlanesForTrack_ = 6;
   int minTracksPerEvent;
   int maxTracksPerEvent;
+  std::string producerTag;
 
   // Configs
   std::vector<uint32_t> listOfArms_ = {0, 1};
@@ -165,13 +167,22 @@ private:
   std::map<std::pair<int, int>, double> fiducialYHigh_;
 
   // Use multiRP efficiency map instead of InterpotEfficiency
-  bool useMultiRP_ = false;
+  bool useMultiRPEfficiency_ = false;
+  // Use interPot efficiency map instead of InterpotEfficiency
+  bool useInterpotEfficiency_ = false;
+  // Use multiRP protons
+  bool useMultiRPProtons_ = false;
 };
 
 EfficiencyVsXi_2018::EfficiencyVsXi_2018(const edm::ParameterSet &iConfig) {
   usesResource("TFileService");
-  protonsToken_ = consumes<reco::ForwardProtonCollection>(
-      edm::InputTag("ctppsProtons", "singleRP"));
+
+  producerTag = iConfig.getUntrackedParameter<std::string>("producerTag");
+
+  singleRPprotonsToken_ = consumes<reco::ForwardProtonCollection>(
+      edm::InputTag("ctppsProtons", "singleRP", producerTag));
+  multiRPprotonsToken_ = consumes<reco::ForwardProtonCollection>(
+      edm::InputTag("ctppsProtons", "multiRP", producerTag));
 
   efficiencyFileName_ =
       iConfig.getUntrackedParameter<std::string>("efficiencyFileName");
@@ -193,7 +204,12 @@ EfficiencyVsXi_2018::EfficiencyVsXi_2018(const edm::ParameterSet &iConfig) {
       iConfig.getUntrackedParameter<std::vector<double>>("fiducialYLow");
   fiducialYHighVector_ =
       iConfig.getUntrackedParameter<std::vector<double>>("fiducialYHigh");
-  useMultiRP_ = iConfig.getUntrackedParameter<bool>("useMultiRP");
+  useMultiRPEfficiency_ =
+      iConfig.getUntrackedParameter<bool>("useMultiRPEfficiency");
+  useInterpotEfficiency_ =
+      iConfig.getUntrackedParameter<bool>("useInterPotEfficiency");
+  useMultiRPProtons_ =
+      iConfig.getUntrackedParameter<bool>("useMultiRPProtons");
   fiducialXLow_ = {
       {std::pair<int, int>(0, 0), fiducialXLowVector_.at(0)},
       {std::pair<int, int>(0, 2), fiducialXLowVector_.at(1)},
@@ -240,7 +256,11 @@ void EfficiencyVsXi_2018::analyze(const edm::Event &iEvent,
   using namespace edm;
 
   Handle<reco::ForwardProtonCollection> protons;
-  iEvent.getByToken(protonsToken_, protons);
+  if (useMultiRPEfficiency_ || useInterpotEfficiency_ || useMultiRPProtons_) {
+    iEvent.getByToken(multiRPprotonsToken_, protons);
+  } else {
+    iEvent.getByToken(singleRPprotonsToken_, protons);
+  }
 
   trackMux_.clear();
 
@@ -248,104 +268,102 @@ void EfficiencyVsXi_2018::analyze(const edm::Event &iEvent,
     if (!proton.validFit())
       continue;
     CTPPSPixelDetId pixelDetId(0, 0); // initialization
-    CTPPSLocalTrackLite track = *(proton.contributingLocalTracks().at(0));
-    CTPPSDetId detId = CTPPSDetId(track.getRPId());
-    trackMux_[detId]++;
+    for (auto &track_ptr : proton.contributingLocalTracks()) {
+      CTPPSLocalTrackLite track = *track_ptr;
 
-    if (proton.contributingLocalTracks().size() > 1) {
-      std::cout << "More than one track contributing to the proton!"
-                << std::endl;
-      throw 1;
+      CTPPSDetId detId = CTPPSDetId(track.getRPId());
+      trackMux_[detId]++;
+
+      try {
+        pixelDetId = CTPPSPixelDetId(detId.rawId());
+      } catch (cms::Exception &e) {
+        if (debug_)
+          std::cout << "Caught exception!" << std::endl;
+        continue;
+      }
+      if (std::find(romanPotIdVector_.begin(), romanPotIdVector_.end(),
+                    pixelDetId) == romanPotIdVector_.end())
+        continue;
+      if (Cut(track))
+        continue;
+
+      uint32_t arm = pixelDetId.arm();
+      uint32_t station = pixelDetId.station();
+      uint32_t rp = pixelDetId.rp();
+
+      if (h1Xi_.find(pixelDetId) == h1Xi_.end()) {
+        h1Xi_[pixelDetId] =
+            new TH1D(Form("h1Xi_arm%i_st%i_rp%i", arm, station, rp),
+                     Form("h1Xi_arm%i_st%i_rp%i;#xi", arm, station, rp), xiBins,
+                     xiMin, xiMax);
+        h1Tx_[pixelDetId] =
+            new TH1D(Form("h1Tx_arm%i_st%i_rp%i", arm, station, rp),
+                     Form("h1Tx_arm%i_st%i_rp%i;Tx", arm, station, rp),
+                     angleBins, angleMin, angleMax);
+        h1Ty_[pixelDetId] =
+            new TH1D(Form("h1Ty_arm%i_st%i_rp%i", arm, station, rp),
+                     Form("h1Ty_arm%i_st%i_rp%i;Ty", arm, station, rp),
+                     angleBins, angleMin, angleMax);
+        h1RecoMethod_[pixelDetId] = new TH1D(
+            Form("h1RecoMethod_arm%i_st%i_rp%i", arm, station, rp),
+            Form("h1RecoMethod_arm%i_st%i_rp%i", arm, station, rp), 3, -1, 1);
+        h1EfficiencyVsXi_[pixelDetId] =
+            new TH1D(Form("h1EfficiencyVsXi_arm%i_st%i_rp%i", arm, station, rp),
+                     Form("h1EfficiencyVsXi_arm%i_st%i_rp%i;#xi;Efficiency",
+                          arm, station, rp),
+                     xiBins, xiMin, xiMax);
+        h1EfficiencyVsTx_[pixelDetId] = new TH1D(
+            Form("h1EfficiencyVsTx_arm%i_st%i_rp%i", arm, station, rp),
+            Form("h1EfficiencyVsTx_arm%i_st%i_rp%i;Tx", arm, station, rp),
+            angleBins, angleMin, angleMax);
+        h1EfficiencyVsTy_[pixelDetId] = new TH1D(
+            Form("h1EfficiencyVsTy_arm%i_st%i_rp%i", arm, station, rp),
+            Form("h1EfficiencyVsTy_arm%i_st%i_rp%i;Ty", arm, station, rp),
+            angleBins, angleMin, angleMax);
+        h1Efficiency_[pixelDetId] =
+            new TH1D(Form("h1Efficiency_arm%i_st%i_rp%i", arm, station, rp),
+                     Form("h1Efficiency_arm%i_st%i_rp%i;Ty", arm, station, rp),
+                     100, 0, 1);
+        h2ProtonHitDistribution_[pixelDetId] = new TH2D(
+            Form("h2ProtonHitDistribution_arm%i_st%i_rp%i", arm, station, rp),
+            Form("h2ProtonHitDistribution_arm%i_st%i_rp%i;x (mm);y (mm)", arm,
+                 station, rp),
+            mapXbins, mapXmin, mapXmax, mapYbins, mapYmin, mapYmax);
+      }
+      double trackX0 = track.getX();
+      double trackY0 = track.getY();
+      double trackTx = track.getTx();
+      double trackTy = track.getTy();
+
+      uint32_t xBin =
+          h2RefinedTrackEfficiency_[pixelDetId]->GetXaxis()->FindBin(trackX0);
+      uint32_t yBin =
+          h2RefinedTrackEfficiency_[pixelDetId]->GetYaxis()->FindBin(trackY0);
+      double trackEfficiency =
+          h2RefinedTrackEfficiency_[pixelDetId]->GetBinContent(xBin, yBin);
+
+      if (debug_) {
+        std::cout << "Contributing tracks: "
+                  << proton.contributingLocalTracks().size() << std::endl;
+        std::cout << detId << std::endl;
+        std::cout << "Arm: " << pixelDetId.arm()
+                  << " Station: " << pixelDetId.station() << std::endl;
+        std::cout << "RecoInfo: " << (int)(track).getPixelTrackRecoInfo()
+                  << std::endl;
+        std::cout << "Track efficiency: " << trackEfficiency << std::endl;
+      }
+
+      h1EfficiencyVsXi_[pixelDetId]->Fill(proton.xi(), trackEfficiency);
+      h1Xi_[pixelDetId]->Fill(proton.xi());
+      h1RecoMethod_[pixelDetId]->Fill((int)proton.method());
+
+      h1Tx_[pixelDetId]->Fill(trackTx);
+      h1EfficiencyVsTx_[pixelDetId]->Fill(trackTx, trackEfficiency);
+      h1Ty_[pixelDetId]->Fill(trackTy);
+      h1EfficiencyVsTy_[pixelDetId]->Fill(trackTy, trackEfficiency);
+      h1Efficiency_[pixelDetId]->Fill(trackEfficiency);
+      h2ProtonHitDistribution_[pixelDetId]->Fill(trackX0, trackY0);
     }
-
-    try {
-      pixelDetId = CTPPSPixelDetId(detId.rawId());
-    } catch (cms::Exception &e) {
-      if (debug_)
-        std::cout << "Caught exception!" << std::endl;
-      continue;
-    }
-    if (std::find(romanPotIdVector_.begin(), romanPotIdVector_.end(),
-                  pixelDetId) == romanPotIdVector_.end())
-      continue;
-    if (Cut(track))
-      continue;
-
-    uint32_t arm = pixelDetId.arm();
-    uint32_t station = pixelDetId.station();
-    uint32_t rp = pixelDetId.rp();
-
-    if (h1Xi_.find(pixelDetId) == h1Xi_.end()) {
-      h1Xi_[pixelDetId] =
-          new TH1D(Form("h1Xi_arm%i_st%i_rp%i", arm, station, rp),
-                   Form("h1Xi_arm%i_st%i_rp%i;#xi", arm, station, rp), xiBins,
-                   xiMin, xiMax);
-      h1Tx_[pixelDetId] =
-          new TH1D(Form("h1Tx_arm%i_st%i_rp%i", arm, station, rp),
-                   Form("h1Tx_arm%i_st%i_rp%i;Tx", arm, station, rp), angleBins,
-                   angleMin, angleMax);
-      h1Ty_[pixelDetId] =
-          new TH1D(Form("h1Ty_arm%i_st%i_rp%i", arm, station, rp),
-                   Form("h1Ty_arm%i_st%i_rp%i;Ty", arm, station, rp), angleBins,
-                   angleMin, angleMax);
-      h1RecoMethod_[pixelDetId] = new TH1D(
-          Form("h1RecoMethod_arm%i_st%i_rp%i", arm, station, rp),
-          Form("h1RecoMethod_arm%i_st%i_rp%i", arm, station, rp), 3, -1, 1);
-      h1EfficiencyVsXi_[pixelDetId] =
-          new TH1D(Form("h1EfficiencyVsXi_arm%i_st%i_rp%i", arm, station, rp),
-                   Form("h1EfficiencyVsXi_arm%i_st%i_rp%i;#xi;Efficiency", arm,
-                        station, rp),
-                   xiBins, xiMin, xiMax);
-      h1EfficiencyVsTx_[pixelDetId] = new TH1D(
-          Form("h1EfficiencyVsTx_arm%i_st%i_rp%i", arm, station, rp),
-          Form("h1EfficiencyVsTx_arm%i_st%i_rp%i;Tx", arm, station, rp),
-          angleBins, angleMin, angleMax);
-      h1EfficiencyVsTy_[pixelDetId] = new TH1D(
-          Form("h1EfficiencyVsTy_arm%i_st%i_rp%i", arm, station, rp),
-          Form("h1EfficiencyVsTy_arm%i_st%i_rp%i;Ty", arm, station, rp),
-          angleBins, angleMin, angleMax);
-      h1Efficiency_[pixelDetId] = new TH1D(
-          Form("h1Efficiency_arm%i_st%i_rp%i", arm, station, rp),
-          Form("h1Efficiency_arm%i_st%i_rp%i;Ty", arm, station, rp), 100, 0, 1);
-      h2ProtonHitDistribution_[pixelDetId] = new TH2D(
-          Form("h2ProtonHitDistribution_arm%i_st%i_rp%i", arm, station, rp),
-          Form("h2ProtonHitDistribution_arm%i_st%i_rp%i;x (mm);y (mm)", arm,
-               station, rp),
-          mapXbins, mapXmin, mapXmax, mapYbins, mapYmin, mapYmax);
-    }
-    double trackX0 = track.getX();
-    double trackY0 = track.getY();
-    double trackTx = track.getTx();
-    double trackTy = track.getTy();
-
-    uint32_t xBin =
-        h2RefinedTrackEfficiency_[pixelDetId]->GetXaxis()->FindBin(trackX0);
-    uint32_t yBin =
-        h2RefinedTrackEfficiency_[pixelDetId]->GetYaxis()->FindBin(trackY0);
-    double trackEfficiency =
-        h2RefinedTrackEfficiency_[pixelDetId]->GetBinContent(xBin, yBin);
-
-    if (debug_) {
-      std::cout << "Contributing tracks: "
-                << proton.contributingLocalTracks().size() << std::endl;
-      std::cout << detId << std::endl;
-      std::cout << "Arm: " << pixelDetId.arm()
-                << " Station: " << pixelDetId.station() << std::endl;
-      std::cout << "RecoInfo: " << (int)(track).getPixelTrackRecoInfo()
-                << std::endl;
-      std::cout << "Track efficiency: " << trackEfficiency << std::endl;
-    }
-
-    h1EfficiencyVsXi_[pixelDetId]->Fill(proton.xi(), trackEfficiency);
-    h1Xi_[pixelDetId]->Fill(proton.xi());
-    h1RecoMethod_[pixelDetId]->Fill((int)proton.method());
-
-    h1Tx_[pixelDetId]->Fill(trackTx);
-    h1EfficiencyVsTx_[pixelDetId]->Fill(trackTx, trackEfficiency);
-    h1Ty_[pixelDetId]->Fill(trackTy);
-    h1EfficiencyVsTy_[pixelDetId]->Fill(trackTy, trackEfficiency);
-    h1Efficiency_[pixelDetId]->Fill(trackEfficiency);
-    h2ProtonHitDistribution_[pixelDetId]->Fill(trackX0, trackY0);
   }
 }
 
@@ -378,25 +396,25 @@ void EfficiencyVsXi_2018::beginJob() {
                "h2InterPotEfficiencyMapMultiRP_arm%i_st%i_rp3",
                arm, station, arm, station);
 
-      if (efficiencyFile_->Get(h2RefinedEfficiencyMapName.data())) {
-        h2RefinedTrackEfficiency_[rpId] = new TH2D(
-            *((TH2D *)efficiencyFile_->Get(h2RefinedEfficiencyMapName.data())));
-        romanPotIdVector_.push_back(rpId);
+      if (useMultiRPEfficiency_) {
+        if (efficiencyFile_->Get(h2InterpotEfficiencyMapMultiRPName.data())) {
+          h2RefinedTrackEfficiency_[rpId] =
+              new TH2D(*((TH2D *)efficiencyFile_->Get(
+                  h2InterpotEfficiencyMapMultiRPName.data())));
+          romanPotIdVector_.push_back(rpId);
+        }
+      } else if (useInterpotEfficiency_) {
+        if (efficiencyFile_->Get(h2InterpotEfficiencyMapName.data())) {
+          h2RefinedTrackEfficiency_[rpId] =
+              new TH2D(*((TH2D *)efficiencyFile_->Get(
+                  h2InterpotEfficiencyMapName.data())));
+          romanPotIdVector_.push_back(rpId);
+        }
       } else {
-        if (useMultiRP_) {
-          if (efficiencyFile_->Get(h2InterpotEfficiencyMapMultiRPName.data())) {
-            h2RefinedTrackEfficiency_[rpId] =
-                new TH2D(*((TH2D *)efficiencyFile_->Get(
-                    h2InterpotEfficiencyMapMultiRPName.data())));
-            romanPotIdVector_.push_back(rpId);
-          }
-        } else {
-          if (efficiencyFile_->Get(h2InterpotEfficiencyMapName.data())) {
-            h2RefinedTrackEfficiency_[rpId] =
-                new TH2D(*((TH2D *)efficiencyFile_->Get(
-                    h2InterpotEfficiencyMapName.data())));
-            romanPotIdVector_.push_back(rpId);
-          }
+        if (efficiencyFile_->Get(h2RefinedEfficiencyMapName.data())) {
+          h2RefinedTrackEfficiency_[rpId] = new TH2D(*(
+              (TH2D *)efficiencyFile_->Get(h2RefinedEfficiencyMapName.data())));
+          romanPotIdVector_.push_back(rpId);
         }
       }
     }

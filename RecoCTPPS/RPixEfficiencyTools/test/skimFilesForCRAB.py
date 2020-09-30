@@ -23,10 +23,16 @@ process.triggerSelection  = hltHighLevel.clone(TriggerResultsTag = "TriggerResul
 
 from RecoCTPPS.Configuration.RecoCTPPS_EventContent_cff import RecoCTPPSAOD
 process.output = cms.OutputModule("PoolOutputModule",
-    fileName = cms.untracked.string('ReReco_2018A.root'),
-    outputCommands = cms.untracked.vstring("drop *")
+    fileName = cms.untracked.string('ReReco_2018B1.root'),
+    outputCommands = cms.untracked.vstring("drop *",
+    	"keep *_ctppsProtons_*_RECO",
+        "keep *_ctppsLocalTrackLiteProducer_*_RECO",
+        "keep *_ctppsPixelRecHits_*_RECO",
+        "keep *_ctppsPixelLocalTracks_*_RECO",
+        "keep *_ctppsPixelClusters_*_RECO",
+    	)
 )
-process.output.outputCommands.extend(RecoCTPPSAOD.outputCommands)
+# process.output.outputCommands.extend(RecoCTPPSAOD.outputCommands)
 
 # Path and EndPath definitions
 process.output_step = cms.EndPath(process.output)

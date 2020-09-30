@@ -59,9 +59,10 @@ options.maxTracksInProbePot = 99
 options.recoInfo = -1
 options.parseArguments()
 
-import FWCore.Utilities.FileUtils as FileUtils
-fileList = FileUtils.loadListFromFile (options.sourceFileList) 
-inputFiles = cms.untracked.vstring( *fileList)
+if options.sourceFileList != '':
+    import FWCore.Utilities.FileUtils as FileUtils
+    fileList = FileUtils.loadListFromFile (options.sourceFileList) 
+    inputFiles = cms.untracked.vstring( *fileList)
 
 process.load("FWCore.MessageService.MessageLogger_cfi")
 
@@ -76,6 +77,7 @@ process.MessageLogger = cms.Service("MessageLogger",
         FwkReport = cms.untracked.PSet(
             optionalPSet = cms.untracked.bool(True),
             reportEvery = cms.untracked.int32(10000),
+            # reportEvery = cms.untracked.int32(1),
             limit = cms.untracked.int32(50000000)
         ),
         default = cms.untracked.PSet(
@@ -87,8 +89,13 @@ process.MessageLogger = cms.Service("MessageLogger",
         "FwkReport"
         ),
 )
+process.MessageLogger.statistics = cms.untracked.vstring()
 
-process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(1000000) )
+process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_cff')
+from Configuration.AlCa.GlobalTag import GlobalTag
+process.GlobalTag = GlobalTag(process.GlobalTag, "106X_dataRun2_v26")
+
+process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(-1) )
 
 process.source = cms.Source("PoolSource",
     # replace 'myfile.root' with the source file you want to use
@@ -107,10 +114,13 @@ if options.useJsonFile == True:
 
 # Fiducial region for tracks
 # RP order 0_0, 0_2, 1_0, 1_2 at the top left angle of the RP track map (for tilted pots)
-fiducialXLow = [2.85,2.28,3.28,2.42]
-fiducialYLow = [-11.5,-10.9,-11.6,-10.3]
-fiducialYHigh = [3.8,4.4,3.7,5.2]
+# fiducialXLow = [2.85,2.28,3.28,2.42]
+# fiducialYLow = [-11.5,-10.9,-11.6,-10.3]
+# fiducialYHigh = [3.8,4.4,3.7,5.2]
 
+fiducialXLow = [0,0,0,0]
+fiducialYLow = [-99.,-99.,-99.,-99.]
+fiducialYHigh = [99.,99.,99.,99.]
 
 firstRunOfTheYear = 314247
 lastRunPreTs1     = 317696
@@ -157,6 +167,7 @@ process.demo = cms.EDAnalyzer('InterpotEfficiency_2018',
     fiducialYHigh=cms.untracked.vdouble(fiducialYHigh),
     recoInfo=cms.untracked.int32(options.recoInfo),
     debug=cms.untracked.bool(False),
+    producerTag=cms.untracked.string("ReMiniAOD")
 )
 
 process.p = cms.Path(process.demo)

@@ -73,12 +73,15 @@ private:
       pixelLocalTrackToken_;
 
   // Parameter set
+  TFile *outputFile_;
   std::string efficiencyFileName_;
+  std::string outputFileName_;
   int minNumberOfPlanesForEfficiency_;
   int minNumberOfPlanesForTrack_;
   int maxNumberOfPlanesForTrack_ = 6;
   int minTracksPerEvent;
   int maxTracksPerEvent;
+  std::string producerTag;
 
   // Configs
   std::vector<uint32_t> listOfArms_ = {0, 1};
@@ -137,8 +140,13 @@ private:
 RefinedEfficiencyTool_2017::RefinedEfficiencyTool_2017(
     const edm::ParameterSet &iConfig) {
   usesResource("TFileService");
+
+  producerTag = iConfig.getUntrackedParameter<std::string>("producerTag");
+
   pixelLocalTrackToken_ = consumes<edm::DetSetVector<CTPPSPixelLocalTrack>>(
-      edm::InputTag("ctppsPixelLocalTracks", ""));
+      edm::InputTag("ctppsPixelLocalTracks", "", producerTag));
+  outputFileName_ =
+      iConfig.getUntrackedParameter<std::string>("outputFileName");
   efficiencyFileName_ =
       iConfig.getUntrackedParameter<std::string>("efficiencyFileName");
   minNumberOfPlanesForEfficiency_ =
@@ -316,10 +324,9 @@ void RefinedEfficiencyTool_2017::beginJob() {
 }
 
 void RefinedEfficiencyTool_2017::endJob() {
-  std::string outputFileName_ =
-      efficiencyFileName_.erase(efficiencyFileName_.size() - 5) +
-      "_refinedEfficiency.root";
-  TFile *outputFile_ = new TFile(outputFileName_.data(), "RECREATE");
+  outputFile_ = new TFile(outputFileName_.data(), "RECREATE");
+  std::cout << "Saving output in: " << outputFile_->GetName() << std::endl;
+
   for (auto &rpId : romanPotIdVector_) {
     uint32_t arm = rpId.arm();
     uint32_t station = rpId.station();

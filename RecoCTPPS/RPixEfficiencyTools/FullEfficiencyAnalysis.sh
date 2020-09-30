@@ -9,7 +9,7 @@ else
 	cd $CMSSW_BASE/src/RecoCTPPS/RPixEfficiencyTools/
 	eval `scramv1 runtime -sh`
 	eval "cmsRun python/EfficiencyAnalysis_cfg.py sourceFileList=InputFiles/Run${1}.dat outputFileName=OutputFiles/Run${1}.root runNumber=${1} bunchSelection=NoSelection"
-	eval "cmsRun python/RefinedEfficiencyAnalysis_cfg.py sourceFileList=InputFiles/EraB.dat efficiencyFileName=OutputFiles/Run${1}.root runNumber=${1}"
+	eval "cmsRun python/RefinedEfficiencyAnalysis_cfg.py sourceFileList=InputFiles/EraB.dat efficiencyFileName=OutputFiles/Run${1}.root outputFileName=OutputFiles/Era${1}_refinedEfficiency.root runNumber=${1}"
 	eval "cmsRun python/InterpotEfficiency_cfg.py sourceFileList=InputFiles/Run${1}.dat outputFileName=OutputFiles/Run${1}_interpotEfficiency.root runNumber=${1} recoInfo=-1 maxPixelTracks=99"
 	eval "cmsRun python/EfficiencyVsXi_cfg.py sourceFileList=InputFiles/EraB.dat efficiencyFileName=OutputFiles/Run${1}_refinedEfficiency.root outputFileName=OutputFiles/Era${1}_efficiencyVsXi.root runNumber=${1}"
 	eval "cmsRun python/EfficiencyVsXi_cfg.py sourceFileList=InputFiles/EraB.dat efficiencyFileName=OutputFiles/Run${1}_interpotEfficiency.root runNumber=${1} outputFileName=OutputFiles/Era${1}_efficiencyVsXi_fromInterpot.root"

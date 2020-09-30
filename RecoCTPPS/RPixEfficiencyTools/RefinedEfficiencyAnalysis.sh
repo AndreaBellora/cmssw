@@ -8,5 +8,5 @@ else
 	export X509_USER_PROXY=$CMSSW_BASE/src/RecoCTPPS/RPixEfficiencyTools/x509up_u$UID
 	cd $CMSSW_BASE/src/RecoCTPPS/RPixEfficiencyTools/
 	eval `scramv1 runtime -sh`
-	eval "cmsRun python/RefinedEfficiencyAnalysis_cfg.py sourceFileList=InputFiles/Run${1}.dat efficiencyFileName=OutputFiles/Run${1}.root runNumber=${1}"
+	eval "cmsRun python/RefinedEfficiencyAnalysis_cfg.py sourceFileList=InputFiles/Run${1}.dat efficiencyFileName=OutputFiles/Run${1}.root outputFileName=OutputFiles/Run${1}_refinedEfficiency.root runNumber=${1}"
 fi

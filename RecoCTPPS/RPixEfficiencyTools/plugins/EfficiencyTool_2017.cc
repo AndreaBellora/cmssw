@@ -53,21 +53,31 @@ private:
   virtual void beginJob() override;
   virtual void analyze(const edm::Event &, const edm::EventSetup &) override;
   virtual void endJob() override;
+
+  // Computes the probability of having numberToExtract inefficient planes
   float
   probabilityNplanesBlind(const std::vector<uint32_t> &inputPlaneList,
                           int numberToExtract,
                           const std::map<unsigned, float> &planeEfficiency);
+  // Computes all the combination of planes with numberToExtract planes
+  // extracted
   void getPlaneCombinations(
       const std::vector<uint32_t> &inputPlaneList, uint32_t numberToExtract,
       std::vector<std::pair<std::vector<uint32_t>, std::vector<uint32_t>>>
           &planesExtractedAndNot);
+
+  // Computes the efficiency, given certain plane efficiency values
   float
   probabilityCalculation(const std::map<uint32_t, float> &planeEfficiency);
+
+  // Obsolete and not correct error propagation
   float errorCalculation(const std::map<uint32_t, float> &planeEfficiency,
                          const std::map<uint32_t, float> &planeEfficiencyError);
   float efficiencyPartialDerivativewrtPlane(
       uint32_t plane, const std::vector<uint32_t> &inputPlaneList,
       int numberToExtract, const std::map<unsigned, float> &planeEfficiency);
+
+  // Return true if a track should be discarded
   bool Cut(CTPPSPixelLocalTrack track, int arm, int station);
 
   edm::EDGetTokenT<edm::DetSetVector<CTPPSPixelLocalTrack>>
@@ -83,6 +93,7 @@ private:
   int maxNumberOfPlanesForTrack_;
   int minTracksPerEvent;
   int maxTracksPerEvent;
+  std::string producerTag;
 
   static const unsigned int totalNumberOfBunches_ = 3564;
   std::string bunchSelection_;
@@ -176,6 +187,8 @@ private:
   float fitXmin = fitXmin_st0;
   float fitXmax = fitXmax_st0;
 
+  // Vector to add in-bin shifts, allows to remove edge effects
+  // under certain conditions
   std::map<CTPPSPixelDetId, int> binAlignmentParameters = {
       {CTPPSPixelDetId(0, 0, 3), 0},
       {CTPPSPixelDetId(0, 2, 3), 0},
@@ -193,10 +206,13 @@ private:
 
 EfficiencyTool_2017::EfficiencyTool_2017(const edm::ParameterSet &iConfig) {
   usesResource("TFileService");
+
+  producerTag = iConfig.getUntrackedParameter<std::string>("producerTag");
+
   pixelLocalTrackToken_ = consumes<edm::DetSetVector<CTPPSPixelLocalTrack>>(
-      edm::InputTag("ctppsPixelLocalTracks", ""));
+      edm::InputTag("ctppsPixelLocalTracks", "", producerTag));
   pixelRecHitToken_ = consumes<edm::DetSetVector<CTPPSPixelRecHit>>(
-      edm::InputTag("ctppsPixelRecHits", ""));
+      edm::InputTag("ctppsPixelRecHits", "", producerTag));
   outputFileName_ =
       iConfig.getUntrackedParameter<std::string>("outputFileName");
   minNumberOfPlanesForEfficiency_ =
@@ -244,6 +260,7 @@ EfficiencyTool_2017::EfficiencyTool_2017(const edm::ParameterSet &iConfig) {
 
 EfficiencyTool_2017::~EfficiencyTool_2017() {
   delete h1BunchCrossing_;
+
   for (const auto &rpId : romanPotIdVector_) {
     delete h2TrackHitDistribution_[rpId];
     if (supplementaryPlots) {
@@ -496,7 +513,8 @@ void EfficiencyTool_2017::analyze(const edm::Event &iEvent,
 
       float pixelX0 = pixeltrack.getX0();
       float pixelY0 = pixeltrack.getY0();
-      std::cout << arm << " " << station << " " << pixeltrack.getZ0() << std::endl;
+      // std::cout << arm << " " << station << " " << pixeltrack.getZ0()
+      //           << std::endl;
       int numberOfRowCls2 = 0;
       int numberOfColCls2 = 0;
       // Rotating St0 tracks

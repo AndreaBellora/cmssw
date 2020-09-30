@@ -8,6 +8,11 @@ process.options = cms.untracked.PSet(
     FailPath = cms.untracked.vstring('ProductNotFound','Type Mismatch')
     )
 options = VarParsing.VarParsing ()
+options.register('outputFileName',
+                '',
+                VarParsing.VarParsing.multiplicity.singleton,
+                VarParsing.VarParsing.varType.string,
+                "output ROOT file name")
 options.register('efficiencyFileName',
                 '',
                 VarParsing.VarParsing.multiplicity.singleton,
@@ -63,6 +68,7 @@ process.MessageLogger = cms.Service("MessageLogger",
         "FwkReport"
         ),
 )
+process.MessageLogger.statistics = cms.untracked.vstring()
 
 process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(-1) )
 
@@ -114,7 +120,7 @@ elif runNumber > lastRunOfTheYear:
     print("This run doesn't belong to 2017 data taking")
 
 process.demo = cms.EDAnalyzer('RefinedEfficiencyTool_2017',
-    # outputFileName=cms.untracked.string("RPixAnalysis_RecoLocalTrack_ReferenceRunAfterTS2.root"),
+    outputFileName=cms.untracked.string(options.outputFileName),
     efficiencyFileName=cms.untracked.string(options.efficiencyFileName),
     minNumberOfPlanesForEfficiency=cms.int32(3),
     minNumberOfPlanesForTrack=cms.int32(3),
@@ -125,6 +131,8 @@ process.demo = cms.EDAnalyzer('RefinedEfficiencyTool_2017',
     fiducialXLow=cms.untracked.vdouble(fiducialXLow),
     fiducialYLow=cms.untracked.vdouble(fiducialYLow),
     fiducialYHigh=cms.untracked.vdouble(fiducialYHigh),
+    producerTag=cms.untracked.string("ReMiniAOD")
+
 )
 
 process.p = cms.Path(process.demo)

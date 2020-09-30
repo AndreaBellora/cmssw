@@ -71,7 +71,7 @@ process.MessageLogger = cms.Service("MessageLogger",
         noTimeStamps = cms.untracked.bool(False),
         FwkReport = cms.untracked.PSet(
             optionalPSet = cms.untracked.bool(True),
-            reportEvery = cms.untracked.int32(1000),
+            reportEvery = cms.untracked.int32(10000),
             # reportEvery = cms.untracked.int32(1),
             limit = cms.untracked.int32(50000000)
         ),
@@ -84,12 +84,13 @@ process.MessageLogger = cms.Service("MessageLogger",
         "FwkReport"
         ),
 )
+process.MessageLogger.statistics = cms.untracked.vstring()
 
 process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_cff')
 from Configuration.AlCa.GlobalTag import GlobalTag
 process.GlobalTag = GlobalTag(process.GlobalTag, "106X_dataRun2_v26")
 
-process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(1000000) )
+process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(-1) )
 
 process.source = cms.Source("PoolSource",
     # replace 'myfile.root' with the source file you want to use
@@ -149,6 +150,8 @@ process.demo = cms.EDAnalyzer('InterpotEfficiency_2017',
     recoInfo=cms.untracked.int32(options.recoInfo),
     maxProtonsInPixelRP=cms.untracked.int32(options.maxPixelTracks), # this affects only the interpot efficiency part
     debug=cms.untracked.bool(False), 
+    producerTag=cms.untracked.string("ReMiniAOD")
+
 )
 
 process.p = cms.Path(process.demo)

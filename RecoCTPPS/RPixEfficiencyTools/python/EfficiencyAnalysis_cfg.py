@@ -45,9 +45,10 @@ options.register('injectionSchemeFileName',
                 "Injection scheme file name")
 options.parseArguments()
 
-import FWCore.Utilities.FileUtils as FileUtils
-fileList = FileUtils.loadListFromFile (options.sourceFileList) 
-inputFiles = cms.untracked.vstring( *fileList)
+if options.sourceFileList != '':
+    import FWCore.Utilities.FileUtils as FileUtils
+    fileList = FileUtils.loadListFromFile (options.sourceFileList) 
+    inputFiles = cms.untracked.vstring( *fileList)
 
 process.load("FWCore.MessageService.MessageLogger_cfi")
 
@@ -73,6 +74,7 @@ process.MessageLogger = cms.Service("MessageLogger",
         "FwkReport"
         ),
 )
+process.MessageLogger.statistics = cms.untracked.vstring()
 
 process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(-1) )
 
@@ -99,7 +101,7 @@ with open("data/RunToScheme2017.csv") as runToSchemeFile:
        (run, fill, injectionScheme) = line.split(", ")
        runToScheme[int(run)] = injectionScheme.rstrip()
 
-if options.bunchSelection != 'NoSelection':
+if options.bunchSelection != 'NoSelection' and options.bunchSelection != '':
     if options.runNumber in runToScheme.keys():
         injectionSchemeFileName = 'data/2017_FillingSchemes/'+runToScheme[options.runNumber]+'.csv'
     else:
@@ -116,13 +118,13 @@ else:
 # fiducialYHigh = [99,4.2,99,4.7]
 
 # no cuts
-# fiducialXLow = [0,0,0,0]
-# fiducialYLow = [-99.,-99.,-99.,-99.]
-# fiducialYHigh = [99.,99.,99.,99.]
+fiducialXLow = [0,0,0,0]
+fiducialYLow = [-99.,-99.,-99.,-99.]
+fiducialYHigh = [99.,99.,99.,99.]
 
-fiducialXLow = [0,4,0,4]
-fiducialYLow = [99,1.5,-99.,1.5]
-fiducialYHigh = [99.,3.5,99.,3.5]
+# fiducialXLow = [0,4,0,4]
+# fiducialYLow = [99,1.5,-99.,1.5]
+# fiducialYHigh = [99.,3.5,99.,3.5]
 
 firstRunOfTheYear = 297050
 lastRunPreTs1     = 297469
@@ -163,6 +165,7 @@ process.demo = cms.EDAnalyzer('EfficiencyTool_2017',
     fiducialXLow=cms.untracked.vdouble(fiducialXLow),
     fiducialYLow=cms.untracked.vdouble(fiducialYLow),
     fiducialYHigh=cms.untracked.vdouble(fiducialYHigh),
+    producerTag=cms.untracked.string("ReMiniAOD")
 )
 
 process.p = cms.Path(process.demo)

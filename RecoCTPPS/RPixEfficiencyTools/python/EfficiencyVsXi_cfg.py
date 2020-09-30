@@ -96,8 +96,9 @@ process.MessageLogger = cms.Service("MessageLogger",
         "FwkReport"
         ),
 )
+process.MessageLogger.statistics = cms.untracked.vstring()
 
-process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(10) )
+process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(-1) )
 
 process.source = cms.Source("PoolSource",
     # replace 'myfile.root' with the source file you want to use
@@ -125,62 +126,62 @@ if options.useJsonFile == True:
 # cuts for POG plots
 fiducialXLow = [0,0,0,0]
 # fiducialXLow = [14,14,14,14]
-fiducialXHigh = [99,99,99,99]
+# fiducialXHigh = [99,99,99,99]
 # fiducialXHigh = [17,17,17,17]
-fiducialYLow = [-99,-99,-99,-99]
-fiducialYHigh = [99,99,99,99]
+# fiducialYLow = [-99,-99,-99,-99]
+# fiducialYHigh = [99,99,99,99]
 
-# if options.era == 'B':
-#     fiducialXLow = [0,1.995,0,2.422]
-#     fiducialXHigh = [99,24.479,99,24.62]
-#     fiducialYLow = [-99,-11.098,-99,-10.698]
-#     fiducialYHigh = [99,4.398,99,4.698]
-#     print('Era '+options.era+' cuts set')
-# elif options.era == 'C1':
-#     fiducialXLow = [0,1.86,0,2.422]
-#     fiducialXHigh = [99,24.334,99,24.62]
-#     fiducialYLow = [-99,-11.098,-99,-10.698]
-#     fiducialYHigh = [99,4.298,99,4.698]
-#     print('Era '+options.era+' cuts set')
-# elif options.era == 'C2': 
-#     fiducialXLow = [0,2.137,0,2.282]
-#     fiducialXHigh = [99,24.334,99,24.62]
-#     fiducialYLow = [-99,-11.098,-99,-10.698]
-#     fiducialYHigh = [99,4.198,99,4.698]
-#     print('Era '+options.era+' cuts set')
-# elif options.era == 'D': 
-#     fiducialXLow = [0,1.86,0,2.282]
-#     fiducialXHigh = [99,24.334,99,24.62]
-#     fiducialYLow = [-99,-11.098,-99,-10.698]
-#     fiducialYHigh = [99,4.298,99,4.698]
-#     print('Era '+options.era+' cuts set')
-# elif options.era == 'E':
-#     fiducialXLow = [0,1.995,0,2.422]
-#     fiducialXHigh = [99,24.479,99,24.62]
-#     fiducialYLow = [-99,-10.098,-99,-9.698]
-#     fiducialYHigh = [99,4.998,99,5.498]
-#     print('Era '+options.era+' cuts set')
-# elif options.era == 'F1':
-#     fiducialXLow = [0,1.995,0,2.422]
-#     fiducialXHigh = [99,24.479,99,24.62]
-#     fiducialYLow = [-99,-10.098,-99,-9.798]
-#     fiducialYHigh = [99,4.998,99,5.398]
-#     print('Era '+options.era+' cuts set')
-# elif options.era == 'F2': 
-#     fiducialXLow = [0,1.86,0,2.280]
-#     fiducialXHigh = [99,24.479,99,24.62]
-#     fiducialYLow = [-99,-10.098,-99,-9.798]
-#     fiducialYHigh = [99,4.998,99,5.398]
-#     print('Era '+options.era+' cuts set')
-# elif options.era == 'F3': 
-#     fiducialXLow = [0,1.86,0,2.280]
-#     fiducialXHigh = [99,24.479,99,24.62]
-#     fiducialYLow = [-99,-10.098,-99,-9.798]
-#     fiducialYHigh = [99,4.998,99,5.398]
-#     print('Era '+options.era+' cuts set')
-# elif options.era != '':
-#     print('Era not found! Exiting...')
-#     sys.exit(1)
+if options.era == 'B':
+    fiducialXLow = [0,1.995,0,2.422]
+    fiducialXHigh = [99,24.479,99,24.62]
+    fiducialYLow = [-99,-11.098,-99,-10.698]
+    fiducialYHigh = [99,4.398,99,4.698]
+    print('Era '+options.era+' cuts set')
+elif options.era == 'C1':
+    fiducialXLow = [0,1.86,0,2.422]
+    fiducialXHigh = [99,24.334,99,24.62]
+    fiducialYLow = [-99,-11.098,-99,-10.698]
+    fiducialYHigh = [99,4.298,99,4.698]
+    print('Era '+options.era+' cuts set')
+elif options.era == 'C2': 
+    fiducialXLow = [0,2.137,0,2.282]
+    fiducialXHigh = [99,24.334,99,24.62]
+    fiducialYLow = [-99,-11.098,-99,-10.698]
+    fiducialYHigh = [99,4.198,99,4.698]
+    print('Era '+options.era+' cuts set')
+elif options.era == 'D': 
+    fiducialXLow = [0,1.86,0,2.282]
+    fiducialXHigh = [99,24.334,99,24.62]
+    fiducialYLow = [-99,-11.098,-99,-10.698]
+    fiducialYHigh = [99,4.298,99,4.698]
+    print('Era '+options.era+' cuts set')
+elif options.era == 'E':
+    fiducialXLow = [0,1.995,0,2.422]
+    fiducialXHigh = [99,24.479,99,24.62]
+    fiducialYLow = [-99,-10.098,-99,-9.698]
+    fiducialYHigh = [99,4.998,99,5.498]
+    print('Era '+options.era+' cuts set')
+elif options.era == 'F1':
+    fiducialXLow = [0,1.995,0,2.422]
+    fiducialXHigh = [99,24.479,99,24.62]
+    fiducialYLow = [-99,-10.098,-99,-9.798]
+    fiducialYHigh = [99,4.998,99,5.398]
+    print('Era '+options.era+' cuts set')
+elif options.era == 'F2': 
+    fiducialXLow = [0,1.86,0,2.280]
+    fiducialXHigh = [99,24.479,99,24.62]
+    fiducialYLow = [-99,-10.098,-99,-9.798]
+    fiducialYHigh = [99,4.998,99,5.398]
+    print('Era '+options.era+' cuts set')
+elif options.era == 'F3': 
+    fiducialXLow = [0,1.86,0,2.280]
+    fiducialXHigh = [99,24.479,99,24.62]
+    fiducialYLow = [-99,-10.098,-99,-9.798]
+    fiducialYHigh = [99,4.998,99,5.398]
+    print('Era '+options.era+' cuts set')
+elif options.era != '':
+    print('Era not found! Exiting...')
+    sys.exit(1)
 
 # no cuts
 # fiducialXLow = [0,0,0,0]
@@ -226,6 +227,7 @@ process.demo = cms.EDAnalyzer('EfficiencyVsXi_2017',
     useInterPotEfficiency=cms.untracked.bool(options.useInterPotEfficiency),
     useMultiRPProtons=cms.untracked.bool(options.useMultiRPProtons),
     lhcInfoLabel = cms.string(""),
+    producerTag=cms.untracked.string("ReMiniAOD")
 )
 
 process.p = cms.Path(process.demo)

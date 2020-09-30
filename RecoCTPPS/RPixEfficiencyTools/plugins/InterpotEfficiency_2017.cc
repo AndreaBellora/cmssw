@@ -97,6 +97,7 @@ private:
   double maxChi2Prob_;
   int minTracksPerEvent;
   int maxTracksPerEvent;
+  std::string producerTag;
 
   // Configs
   std::vector<uint32_t> listOfArms_ = {0, 1};
@@ -180,7 +181,7 @@ private:
   double yMatchWindow56 = 5. * 0.14777;
   double xMatchWindow45 = 99;
   double xMatchWindow56 = 99;
-  bool excludeMultipleMatches = true;
+  bool excludeMultipleMatches = false;
 
   // Number of times that a Tag proton matched more than one Probe
   std::map<CTPPSPixelDetId, uint32_t> overmatches;
@@ -251,10 +252,13 @@ private:
 InterpotEfficiency_2017::InterpotEfficiency_2017(
     const edm::ParameterSet &iConfig) {
   usesResource("TFileService");
+
+  producerTag = iConfig.getUntrackedParameter<std::string>("producerTag");
+
   protonsToken_ = consumes<reco::ForwardProtonCollection>(
-      edm::InputTag("ctppsProtons", "singleRP"));
+      edm::InputTag("ctppsProtons", "singleRP", producerTag));
   multiRP_protonsToken_ = consumes<reco::ForwardProtonCollection>(
-      edm::InputTag("ctppsProtons", "multiRP"));
+      edm::InputTag("ctppsProtons", "multiRP", producerTag));
   // pixelHeavyTrackToken_ = consumes<edm::DetSetVector<CTPPSPixelLocalTrack>>(
   // edm::InputTag("ctppsPixelLocalTracks", ""));
 
@@ -371,7 +375,7 @@ void InterpotEfficiency_2017::analyze(const edm::Event &iEvent,
 
   Handle<reco::ForwardProtonCollection> multiRP_protons;
   iEvent.getByToken(multiRP_protonsToken_, multiRP_protons);
-  
+
   // Get LHCInfo handle
   edm::ESHandle<LHCInfo> lhcInfo;
   iSetup.get<LHCInfoRcd>().get("", lhcInfo);
@@ -435,7 +439,7 @@ void InterpotEfficiency_2017::analyze(const edm::Event &iEvent,
                 << std::endl;
 
     // if (xi_Tag > Aperture(xangle, arm_Tag, "2018"))
-      // continue;
+    // continue;
 
     if (detId_Tag.station() != 0) {
       // Here the tag proton can only be a pixel proton
@@ -955,19 +959,19 @@ void InterpotEfficiency_2017::analyze(const edm::Event &iEvent,
 
         // Check that the matched proton has recoInfo = 0 or 2 (non shifted
         // planes)
-        // if (!passRecoInfo)
-        //   continue;
-        // for (auto &pixeltrack : multiRP_proton.contributingLocalTracks()) {
-        //   if (CTPPSDetId(pixeltrack->getRPId()).station() == 2) {
-        //     int recoInfo = (int)pixeltrack->getPixelTrackRecoInfo();
-        //     if (recoInfo != 0 && recoInfo != 2) {
-        //       passRecoInfo = false;
-        //       failRecoInfo = recoInfo;
-        //     }
-        //   }
-        // }
-        // if (!passRecoInfo)
-        //   continue;
+        if (!passRecoInfo)
+          continue;
+        for (auto &pixeltrack : multiRP_proton.contributingLocalTracks()) {
+          if (CTPPSDetId(pixeltrack->getRPId()).station() == 2) {
+            int recoInfo = (int)pixeltrack->getPixelTrackRecoInfo();
+            if (recoInfo != 0 && recoInfo != 2) {
+              passRecoInfo = false;
+              failRecoInfo = recoInfo;
+            }
+          }
+        }
+        if (!passRecoInfo)
+          continue;
 
         if (arm == arm_Tag && station == 0 &&
             TMath::Abs(trackX0_Tag - trackX0) < 0.01 &&

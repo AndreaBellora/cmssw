@@ -97,6 +97,7 @@ private:
   int maxNumberOfPlanesForTrack_ = 6;
   int minTracksPerEvent;
   int maxTracksPerEvent;
+  std::string producerTag;
 
   // Configs
   std::vector<uint32_t> listOfArms_ = {0, 1};
@@ -192,10 +193,13 @@ using namespace edm;
 
 EfficiencyVsXi_2017::EfficiencyVsXi_2017(const edm::ParameterSet &iConfig)
     : lhcInfoLabel_(iConfig.getParameter<std::string>("lhcInfoLabel")) {
+
+  producerTag = iConfig.getUntrackedParameter<std::string>("producerTag");
+
   singleRPprotonsToken_ = consumes<reco::ForwardProtonCollection>(
-      edm::InputTag("ctppsProtons", "singleRP"));
+      edm::InputTag("ctppsProtons", "singleRP", producerTag));
   multiRPprotonsToken_ = consumes<reco::ForwardProtonCollection>(
-      edm::InputTag("ctppsProtons", "multiRP"));
+      edm::InputTag("ctppsProtons", "multiRP", producerTag));
 
   efficiencyFileName_ =
       iConfig.getUntrackedParameter<std::string>("efficiencyFileName");
@@ -272,7 +276,7 @@ void EfficiencyVsXi_2017::analyze(const edm::Event &iEvent,
 
   Handle<reco::ForwardProtonCollection> protons;
   if (useMultiRPEfficiency_ || useInterpotEfficiency || useMultiRPProtons_) {
-  // if (useMultiRPProtons_) {
+    // if (useMultiRPProtons_) {
     iEvent.getByToken(multiRPprotonsToken_, protons);
     apply_apertureCut = true;
   } else {

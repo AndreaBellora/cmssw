@@ -71,7 +71,7 @@ private:
   bool Cut(CTPPSLocalTrackLite track);
 
   bool debug_ = false;
-  bool fancyBinning_ = false;
+  bool fancyBinning_ = true;
 
   // z position of the pots (mm)
   std::map<CTPPSDetId, double> Z = {
@@ -725,15 +725,52 @@ void InterpotEfficiency_2018::endJob() {
 
       h2InterPotEfficiencyMap_[rpId]->Divide(h2InterPotEfficiencyMap_[rpId],
                                              h2AuxProtonHitDistribution_[rpId],
-                                             1., 1.);
+                                             1., 1.,"B");
+      for (auto i = 1; i < h2InterPotEfficiencyMap_[rpId]->GetNbinsX(); i++) {
+        for (auto j = 1; j < h2InterPotEfficiencyMap_[rpId]->GetNbinsY(); j++) {
+          double efficiency =
+              h2InterPotEfficiencyMap_[rpId]->GetBinContent(i, j);
+          double tries = h2AuxProtonHitDistribution_[rpId]->GetBinContent(i, j);
+          if (tries != 0) {
+            double error = TMath::Sqrt((efficiency * (1 - efficiency)) / tries);
+            h2InterPotEfficiencyMap_[rpId]->SetBinError(i, j, error);
+          } else
+            h2InterPotEfficiencyMap_[rpId]->SetBinError(i, j, 0);
+        }
+      }
       h2InterPotEfficiencyMap_[rpId]->SetMinimum(0);
       h2InterPotEfficiencyMap_[rpId]->SetMaximum(1);
-      h2InterPotEfficiencyMap_[rpId]->Write();
+      h2InterPotEfficiencyMap_[rpId]->Write();    
+
+      TEfficiency TEInterPotEfficiencyMapMultiRP =
+          TEfficiency(*h2InterPotEfficiencyMapMultiRP_[rpId],
+                      *h2AuxProtonHitDistribution_[rpId]);
+      TEInterPotEfficiencyMapMultiRP.SetNameTitle(
+          Form("TEInterPotEfficiencyMapMultiRP_arm%i_st%i_rp%i", arm, station,
+               3),
+          Form("TEInterPotEfficiencyMapMultiRP_arm%i_st%i_rp%i", arm, station,
+               3));
+      TEInterPotEfficiencyMapMultiRP.Write();
+
       h2InterPotEfficiencyMapMultiRP_[rpId]->Divide(
           h2InterPotEfficiencyMapMultiRP_[rpId],
-          h2AuxProtonHitDistribution_[rpId], 1., 1.);
+          h2AuxProtonHitDistribution_[rpId], 1., 1.,"B");
       h2InterPotEfficiencyMapMultiRP_[rpId]->SetMinimum(0);
       h2InterPotEfficiencyMapMultiRP_[rpId]->SetMaximum(1);
+      for (auto i = 1; i < h2InterPotEfficiencyMapMultiRP_[rpId]->GetNbinsX();
+           i++) {
+        for (auto j = 1; j < h2InterPotEfficiencyMapMultiRP_[rpId]->GetNbinsY();
+             j++) {
+          double efficiency =
+              h2InterPotEfficiencyMapMultiRP_[rpId]->GetBinContent(i, j);
+          double tries = h2AuxProtonHitDistribution_[rpId]->GetBinContent(i, j);
+          if (tries != 0) {
+            double error = TMath::Sqrt((efficiency * (1 - efficiency)) / tries);
+            h2InterPotEfficiencyMapMultiRP_[rpId]->SetBinError(i, j, error);
+          } else
+            h2InterPotEfficiencyMapMultiRP_[rpId]->SetBinError(i, j, 0);
+        }
+      }
       h2InterPotEfficiencyMapMultiRP_[rpId]->Write();
       h2AuxProtonHitDistribution_[rpId]->Write();
 

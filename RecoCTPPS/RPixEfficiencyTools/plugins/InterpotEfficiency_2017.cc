@@ -316,7 +316,7 @@ InterpotEfficiency_2017::InterpotEfficiency_2017(
       if (i <= nBinsX_small)
         xBinEdges[detId].push_back(i * mapXbinSize_small);
       else
-        xBinEdges[detId].push_back(i * mapXbinSize_small +
+        xBinEdges[detId].push_back(nBinsX_small * mapXbinSize_small +
                                    (i - nBinsX_small) * mapXbinSize_large);
     }
   }

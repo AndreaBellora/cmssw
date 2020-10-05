@@ -98,7 +98,7 @@ process.MessageLogger = cms.Service("MessageLogger",
 )
 process.MessageLogger.statistics = cms.untracked.vstring()
 
-process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(-1) )
+process.maxEvents = cms.untracked.PSet( input = cms.untracked.int32(3000000) )
 
 process.source = cms.Source("PoolSource",
     # replace 'myfile.root' with the source file you want to use

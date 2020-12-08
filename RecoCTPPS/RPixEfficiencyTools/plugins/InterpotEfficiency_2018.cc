@@ -89,7 +89,9 @@ private:
   int minNumberOfPlanesForTrack_;
   int maxNumberOfPlanesForTrack_ = 6;
   uint32_t maxTracksInTagPot = 99;
+  uint32_t minTracksInTagPot = 0;
   uint32_t maxTracksInProbePot = 99;
+  uint32_t minTracksInProbePot = 0;
   double maxChi2Prob_;
   std::string producerTag;
 
@@ -216,8 +218,11 @@ InterpotEfficiency_2018::InterpotEfficiency_2018(
   minNumberOfPlanesForTrack_ =
       iConfig.getUntrackedParameter<int>("minNumberOfPlanesForTrack");
   maxTracksInTagPot = iConfig.getUntrackedParameter<int>("maxTracksInTagPot");
+  minTracksInTagPot = iConfig.getUntrackedParameter<int>("minTracksInTagPot");
   maxTracksInProbePot =
       iConfig.getUntrackedParameter<int>("maxTracksInProbePot");
+  minTracksInProbePot =
+      iConfig.getUntrackedParameter<int>("minTracksInProbePot");
   maxChi2Prob_ = iConfig.getUntrackedParameter<double>("maxChi2Prob");
 
   binGroupingX = iConfig.getUntrackedParameter<int>("binGroupingX"); // UNUSED!
@@ -343,7 +348,7 @@ void InterpotEfficiency_2018::analyze(const edm::Event &iEvent,
     double xi_Tag = proton_Tag.xi();
     int matches = 0;
 
-    if (trackMux_[detId_Tag] > maxTracksInTagPot)
+    if (trackMux_[detId_Tag] > maxTracksInTagPot || trackMux_[detId_Tag] < minTracksInTagPot)
       continue;
     // Start only from strips
     // if (detId_Tag.station() != 0) // use as Tag only the strips RPs
@@ -370,7 +375,7 @@ void InterpotEfficiency_2018::analyze(const edm::Event &iEvent,
     CTPPSPixelDetId pixelDetId(arm_Probe, station_Probe, rp_Probe);
     CTPPSDetId detId_Probe(pixelDetId.rawId());
 
-    if (trackMux_[detId_Probe] > maxTracksInProbePot)
+    if (trackMux_[detId_Probe] > maxTracksInProbePot || trackMux_[detId_Probe] < minTracksInProbePot)
       continue;
 
     double deltaZ = Z[detId_Probe] - Z[detId_Tag];

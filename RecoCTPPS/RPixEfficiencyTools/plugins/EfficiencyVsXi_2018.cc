@@ -208,8 +208,7 @@ EfficiencyVsXi_2018::EfficiencyVsXi_2018(const edm::ParameterSet &iConfig) {
       iConfig.getUntrackedParameter<bool>("useMultiRPEfficiency");
   useInterpotEfficiency_ =
       iConfig.getUntrackedParameter<bool>("useInterPotEfficiency");
-  useMultiRPProtons_ =
-      iConfig.getUntrackedParameter<bool>("useMultiRPProtons");
+  useMultiRPProtons_ = iConfig.getUntrackedParameter<bool>("useMultiRPProtons");
   fiducialXLow_ = {
       {std::pair<int, int>(0, 0), fiducialXLowVector_.at(0)},
       {std::pair<int, int>(0, 2), fiducialXLowVector_.at(1)},
@@ -256,7 +255,7 @@ void EfficiencyVsXi_2018::analyze(const edm::Event &iEvent,
   using namespace edm;
 
   Handle<reco::ForwardProtonCollection> protons;
-  if (useMultiRPEfficiency_ || useInterpotEfficiency_ || useMultiRPProtons_) {
+  if (useMultiRPProtons_) {
     iEvent.getByToken(multiRPprotonsToken_, protons);
   } else {
     iEvent.getByToken(singleRPprotonsToken_, protons);

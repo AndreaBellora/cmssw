@@ -43,6 +43,11 @@ options.register('maxTracksInTagPot',
                 VarParsing.VarParsing.multiplicity.singleton,
                 VarParsing.VarParsing.varType.int,
                 "Maximum pixel tracks in tag RP")
+options.register('minTracksInTagPot',
+                '',
+                VarParsing.VarParsing.multiplicity.singleton,
+                VarParsing.VarParsing.varType.int,
+                "Minimum pixel tracks in tag RP")
 options.register('maxTracksInProbePot',
                 '',
                 VarParsing.VarParsing.multiplicity.singleton,
@@ -55,7 +60,9 @@ options.register('maxChi2Prob',
                 "Maximum chi2 probability of the track")
 options.maxChi2Prob = 0.999999
 options.maxTracksInTagPot = 99
+options.minTracksInTagPot = 0
 options.maxTracksInProbePot = 99
+options.minTracksInProbePot = 0
 options.recoInfo = -1
 options.parseArguments()
 
@@ -159,7 +166,9 @@ process.demo = cms.EDAnalyzer('InterpotEfficiency_2018',
     minNumberOfPlanesForTrack=cms.untracked.int32(3),
     maxChi2Prob=cms.untracked.double(options.maxChi2Prob),
     maxTracksInProbePot=cms.untracked.int32(options.maxTracksInProbePot),    
+    minTracksInProbePot=cms.untracked.int32(options.minTracksInProbePot),    
     maxTracksInTagPot=cms.untracked.int32(options.maxTracksInTagPot),    
+    minTracksInTagPot=cms.untracked.int32(options.minTracksInTagPot),    
     binGroupingX=cms.untracked.int32(1),
     binGroupingY=cms.untracked.int32(1),
     fiducialXLow=cms.untracked.vdouble(fiducialXLow),

@@ -128,62 +128,50 @@ if options.useJsonFile == True:
 # fiducialXLow = [0,0,0,0]
 # fiducialXHigh = [99,99,99,99]
 
-# if options.era == 'A':
-#     fiducialXLow = [2.85,2.421,3.277,2.421]
-#     fiducialXHigh = [17.927,24.62,18.498,25.045]
-#     fiducialYLow = [-11.598,-10.898,-11.298,-10.398]
-#     fiducialYHigh = [3.698,4.398,4.098,5.098]
-#     print('Era '+options.era+' cuts set')
-# elif options.era == 'B':
-#     fiducialXLow = [2.85,2.421,3.277,2.421]
-#     fiducialXHigh = [17.927,24.62,18.07,25.045]
-#     fiducialYLow = [-11.598,-10.898,-11.198,-10.398]
-#     fiducialYHigh = [3.698,4.198,4.098,5.098]
-#     print('Era '+options.era+' cuts set')
-# elif options.era == 'B1':
-#     fiducialXLow = [2.85,2.421,3.277,2.564]
-#     fiducialXHigh = [17.927,24.62,18.07,25.045]
-#     fiducialYLow = [-11.598,-10.898,-11.198,-10.398]
-#     fiducialYHigh = [3.698,4.198,4.098,5.098]
-#     print('Era '+options.era+' cuts set')
-# elif options.era == 'B2':
-#     fiducialXLow = [2.564,2.140,3.277,2.279]
-#     fiducialXHigh = [17.64,24.47,17.931,24.76]
-#     fiducialYLow = [-11.098,-11.398,-10.498,-10.598]
-#     fiducialYHigh = [4.198,3.798,4.698,4.498]
-#     print('Era '+options.era+' cuts set')
-# elif options.era == 'C':
-#     fiducialXLow = [2.564,2.421,3.277,2.279]
-#     fiducialXHigh = [17.93,24.62,17.931,24.76]
-#     fiducialYLow = [-11.098,-11.398,-10.498,-10.598]
-#     fiducialYHigh = [4.198,3.698,4.698,4.398]
-#     print('Era '+options.era+' cuts set')
-# elif options.era == 'D':
-#     fiducialXLow = [2.705,2.421,3.277,2.279]
-#     fiducialXHigh = [17.93,24.62,17.931,24.76]
-#     fiducialYLow = [-10.998,-11.498,-10.298,-10.598]
-#     fiducialYHigh = [4.298,3.598,4.698,4.198]
-#     print('Era '+options.era+' cuts set')
-# elif options.era == 'D1':
-#     fiducialXLow = [2.85,2.421,3.277,2.279]
-#     fiducialXHigh = [17.93,24.62,17.931,24.76]
-#     fiducialYLow = [-11.098,-11.398,-10.498,-10.598]
-#     fiducialYHigh = [4.098,3.698,4.698,4.398]
-#     print('Era '+options.era+' cuts set')
-# elif options.era == 'D2':
-#     fiducialXLow = [2.85,2.421,3.277,2.279]
-#     fiducialXHigh = [17.931,24.62,17.931,24.76]
-#     fiducialYLow = [-10.598,-11.698,-9.998,-10.598]
-#     fiducialYHigh = [4.498,3.298,4.698,3.898]
-# elif options.era != '':
-#     print('Era not found! Exiting...')
-#     sys.exit(1)
+if options.era == 'A':
+    fiducialXLow = [2.71,2.278,3.000,2.420]
+    fiducialXHigh = [17.927,24.62,18.498,25.045]
+    fiducialYLow = [-11.598,-10.898,-11.298,-10.398]
+    fiducialYHigh = [3.698,4.398,4.098,5.098]
+    print('Era '+options.era+' cuts set')
+elif options.era == 'B1':
+    fiducialXLow = [2.850,2.420,3.000,2.420]
+    fiducialXHigh = [17.927,24.62,18.07,25.045]
+    fiducialYLow = [-11.598,-10.798,-11.198,-10.398]
+    fiducialYHigh = [3.698,4.298,4.098,5.098]
+    print('Era '+options.era+' cuts set')
+elif options.era == 'B2':
+    fiducialXLow = [2.562,2.135,3.000,2.279]
+    fiducialXHigh = [17.64,24.47,17.931,24.76]
+    fiducialYLow = [-11.098,-11.398,-10.498,-10.598]
+    fiducialYHigh = [4.198,3.798,4.698,4.498]
+    print('Era '+options.era+' cuts set')
+elif options.era == 'C':
+    fiducialXLow = [2.564,2.278,3.00,2.279]
+    fiducialXHigh = [17.93,24.62,17.931,24.76]
+    fiducialYLow = [-11.098,-11.398,-10.498,-10.598]
+    fiducialYHigh = [4.198,3.698,4.698,4.398]
+    print('Era '+options.era+' cuts set')
+elif options.era == 'D1':
+    fiducialXLow = [2.847,2.278,3.000,2.279]
+    fiducialXHigh = [17.93,24.62,17.931,24.76]
+    fiducialYLow = [-11.098,-11.398,-10.498,-10.598]
+    fiducialYHigh = [4.098,3.698,4.698,4.398]
+    print('Era '+options.era+' cuts set')
+elif options.era == 'D2':
+    fiducialXLow = [2.847,2.278,3.000,2.279]
+    fiducialXHigh = [17.931,24.62,17.931,24.76]
+    fiducialYLow = [-10.598,-11.598,-9.998,-10.598]
+    fiducialYHigh = [4.498,3.398,4.698,3.898]
+elif options.era != '':
+    print('Era not found! Exiting...')
+    sys.exit(1)
 
 # no cuts
-fiducialXLow = [0,0,0,0]
-fiducialXHigh = [99,99,99,99]
-fiducialYLow = [-99.,-99.,-99.,-99.]
-fiducialYHigh = [99.,99.,99.,99.]
+# fiducialXLow = [0,0,0,0]
+# fiducialXHigh = [99,99,99,99]
+# fiducialYLow = [-99.,-99.,-99.,-99.]
+# fiducialYHigh = [99.,99.,99.,99.]
 
 firstRunOfTheYear = 314247
 lastRunPreTs1     = 317696

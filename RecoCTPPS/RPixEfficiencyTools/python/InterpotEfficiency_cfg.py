@@ -53,6 +53,11 @@ options.register('maxTracksInProbePot',
                 VarParsing.VarParsing.multiplicity.singleton,
                 VarParsing.VarParsing.varType.int,
                 "Maximum pixel tracks in probe RP")
+options.register('minTracksInProbePot',
+                '',
+                VarParsing.VarParsing.multiplicity.singleton,
+                VarParsing.VarParsing.varType.int,
+                "Mainimum pixel tracks in probe RP")
 options.register('maxChi2Prob',
                 '',
                 VarParsing.VarParsing.multiplicity.singleton,

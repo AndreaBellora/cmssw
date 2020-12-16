@@ -146,19 +146,19 @@ private:
   double angleMin = -0.03;
   double angleMax = 0.03;
 
-  double xiMatchMean45 = 0;
-  double xiMatchMean56 = 0;
-  double yMatchMean45 = 0;
-  double yMatchMean56 = 0;
-  double xMatchMean45 = 0;
-  double xMatchMean56 = 0;
-  double xiMatchWindow45 = 0.010;
-  double xiMatchWindow56 = 0.015;
-  double yMatchWindow45 = 99;
-  double yMatchWindow56 = 99;
-  double xMatchWindow45 = 99;
-  double xMatchWindow56 = 99;
-  bool excludeMultipleMatches = true;
+  double xiMatchMean45 = +3.113062e-5;
+  double xiMatchMean56 = -1.1852528e-5;
+  double yMatchMean45 = +0.10973631;
+  double yMatchMean56 = +0.064261029;
+  double xMatchMean45 = -0.065194856;
+  double xMatchMean56 = +0.073016431;
+  double xiMatchWindow45 = 4. * 0.0012403586;
+  double xiMatchWindow56 = 5. * 0.002046409;
+  double yMatchWindow45 = 4. * 0.1407986;
+  double yMatchWindow56 = 5. * 0.14990802;
+  double xMatchWindow45 = 4. * 0.16008188;
+  double xMatchWindow56 = 5. * 0.18126434;
+  bool excludeMultipleMatches = false;
 
   // Number of times that a Tag proton matched more than one Probe
   std::map<CTPPSPixelDetId, uint32_t> overmatches;

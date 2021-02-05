@@ -1,6 +1,7 @@
 <use name="FWCore/Framework"/>
 <use name="FWCore/PluginManager"/>
 <use name="FWCore/ParameterSet"/>
+<use name="FWCore/Common"/>
 <use name="root"/>
 <use name="DataFormats/Common"/>
 <use name="DataFormats/CTPPSDetId"/>

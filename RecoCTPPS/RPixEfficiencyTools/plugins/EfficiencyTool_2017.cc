@@ -26,13 +26,18 @@
 #include "FWCore/Framework/interface/Frameworkfwd.h"
 #include "FWCore/Framework/interface/one/EDAnalyzer.h"
 
+
 #include "FWCore/Framework/interface/Event.h"
+#include "FWCore/Framework/interface/EventSetup.h"
 #include "FWCore/Framework/interface/MakerMacros.h"
 
 #include "DataFormats/CTPPSDetId/interface/CTPPSPixelDetId.h"
 #include "DataFormats/CTPPSReco/interface/CTPPSPixelLocalTrack.h"
 #include "DataFormats/CTPPSReco/interface/CTPPSPixelRecHit.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
+
+#include "CondFormats/RunInfo/interface/LHCInfo.h"
+#include "CondFormats/DataRecord/interface/LHCInfoRcd.h"
 
 #include <TF1.h>
 #include <TFile.h>
@@ -101,6 +106,7 @@ private:
   bool validBunchArray_[totalNumberOfBunches_];
 
   TH1D *h1BunchCrossing_;
+  TH1D *h1CrossingAngle_;
   std::map<CTPPSPixelDetId, TH2D *> h2ModuleHitMap_;
   std::map<CTPPSPixelDetId, TH2D *> h2EfficiencyMap_;
   std::map<CTPPSPixelDetId, TH1D *> h1EfficiencyVsX_;
@@ -260,6 +266,7 @@ EfficiencyTool_2017::EfficiencyTool_2017(const edm::ParameterSet &iConfig) {
 
 EfficiencyTool_2017::~EfficiencyTool_2017() {
   delete h1BunchCrossing_;
+  delete h1CrossingAngle_;
 
   for (const auto &rpId : romanPotIdVector_) {
     delete h2TrackHitDistribution_[rpId];
@@ -333,6 +340,14 @@ void EfficiencyTool_2017::analyze(const edm::Event &iEvent,
     return;
   h1BunchCrossing_->Fill(iEvent.eventAuxiliary().bunchCrossing());
 
+  edm::ESHandle<LHCInfo> pSetup;
+  const std::string label = "";
+  iSetup.get<LHCInfoRcd>().get(label, pSetup);
+
+  // re-initialise algorithm upon crossing-angle change
+  const LHCInfo *pInfo = pSetup.product();
+  h1CrossingAngle_->Fill(pInfo->crossingAngle());
+  
   for (const auto &rpPixeltrack : *pixelLocalTracks) {
     if ((uint32_t)minTracksPerEvent > rpPixeltrack.size() ||
         rpPixeltrack.size() > (uint32_t)maxTracksPerEvent)
@@ -775,6 +790,8 @@ void EfficiencyTool_2017::beginJob() {
   // Applying bunch selection
   h1BunchCrossing_ = new TH1D("h1BunchCrossing", "h1BunchCrossing",
                               totalNumberOfBunches_, 0., totalNumberOfBunches_);
+  h1CrossingAngle_ =
+      new TH1D("h1CrossingAngle", "h1CrossingAngle", 70, 100., 170);
   std::ifstream bunchListFile(bunchListFileName_.data());
   if (bunchSelection_ == "NoSelection") {
     std::fill_n(validBunchArray_, totalNumberOfBunches_, true);
@@ -840,6 +857,7 @@ void EfficiencyTool_2017::endJob() {
   outputFile_ = new TFile(outputFileName_.data(), "RECREATE");
   std::cout << "Saving output in: " << outputFile_->GetName() << std::endl;
   h1BunchCrossing_->Write();
+  h1CrossingAngle_->Write();
   for (const auto &rpId : romanPotIdVector_) {
     uint32_t arm = rpId.arm();
     uint32_t rp = rpId.rp();

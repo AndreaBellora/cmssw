@@ -195,6 +195,7 @@ private:
 
   // output histograms
   std::map<CTPPSPixelDetId, TH2D *> h2AuxProtonHitDistribution_;
+  std::map<CTPPSPixelDetId, TH2D *> h2AuxProtonHitDistributionWithNoMultiRP_;
   std::map<CTPPSPixelDetId, TH2D *> h2InterPotEfficiencyMap_;
   std::map<CTPPSPixelDetId, TH2D *> h2InterPotEfficiencyMapMultiRP_;
   std::map<CTPPSPixelDetId, TH2D *> h2XiMultiVsXiSingle_;
@@ -325,6 +326,7 @@ InterpotEfficiency_2017::InterpotEfficiency_2017(
 InterpotEfficiency_2017::~InterpotEfficiency_2017() {
   for (auto &rpId : romanPotIdVector_) {
     delete h2AuxProtonHitDistribution_[rpId];
+    delete h2AuxProtonHitDistributionWithNoMultiRP_[rpId];
     delete h2InterPotEfficiencyMap_[rpId];
     delete h2InterPotEfficiencyMapMultiRP_[rpId];
     delete h2XiMultiVsXiSingle_[rpId];
@@ -699,6 +701,14 @@ void InterpotEfficiency_2017::analyze(const edm::Event &iEvent,
                 arm_Probe, station_Probe, rp_Probe),
             nBinsX_total[pixelDetId], &xBinEdges[pixelDetId][0], mapYbins,
             mapYmin, mapYmax);
+        h2AuxProtonHitDistributionWithNoMultiRP_[pixelDetId] = new TH2D(
+            Form("h2ProtonHitExpectedDistributionWithNoMultiRP_arm%i_st%i_rp%i",
+                 arm_Probe, station_Probe, rp_Probe),
+            Form("h2ProtonHitExpectedDistributionWithNoMultiRP_arm%i_st%i_rp%i;"
+                 "x (mm);y (mm)",
+                 arm_Probe, station_Probe, rp_Probe),
+            nBinsX_total[pixelDetId], &xBinEdges[pixelDetId][0], mapYbins,
+            mapYmin, mapYmax);
         h2InterPotEfficiencyMap_[pixelDetId] = new TH2D(
             Form("h2InterPotEfficiencyMap_arm%i_st%i_rp%i", arm_Probe,
                  station_Probe, rp_Probe),
@@ -720,6 +730,13 @@ void InterpotEfficiency_2017::analyze(const edm::Event &iEvent,
             Form(
                 "h2ProtonHitExpectedDistribution_arm%i_st%i_rp%i;x (mm);y (mm)",
                 arm_Probe, station_Probe, rp_Probe),
+            mapXbins, mapXmin, mapXmax, mapYbins, mapYmin, mapYmax);
+        h2AuxProtonHitDistributionWithNoMultiRP_[pixelDetId] = new TH2D(
+            Form("h2ProtonHitExpectedDistributionWithNoMultiRP_arm%i_st%i_rp%i",
+                 arm_Probe, station_Probe, rp_Probe),
+            Form("h2ProtonHitExpectedDistributionWithNoMultiRP_arm%i_st%i_rp%i;"
+                 "x (mm);y (mm)",
+                 arm_Probe, station_Probe, rp_Probe),
             mapXbins, mapXmin, mapXmax, mapYbins, mapYmin, mapYmax);
         h2InterPotEfficiencyMap_[pixelDetId] = new TH2D(
             Form("h2InterPotEfficiencyMap_arm%i_st%i_rp%i", arm_Probe,
@@ -1031,6 +1048,10 @@ void InterpotEfficiency_2017::analyze(const edm::Event &iEvent,
         std::cout << "******************************" << std::endl;
       }
     }
+
+    if (multiRPmatchFound == 0)
+      h2AuxProtonHitDistributionWithNoMultiRP_[pixelDetId]->Fill(
+          expectedTrackX0_Probe, expectedTrackY0_Probe);
 
     int matches = 0;
     for (auto &proton_Probe : *protons) { // Probe -> Roman Pot Under Test
@@ -1389,19 +1410,13 @@ void InterpotEfficiency_2017::endJob() {
       h1MatchingRate_[rpId]->Write();
       h2ProtonDistributionWithNoPurityMatch_[rpId]->Write();
 
-      for (int xbin = 1; xbin < mapXbins_st2; xbin++) {
-        for (int ybin = 1; ybin < mapYbins_st2; ybin++) {
-          if (h2AuxProtonHitDistribution_[rpId]->GetBinContent(xbin, ybin) < 0)
-            h2InterPotEfficiencyMap_[rpId]->SetBinContent(xbin, ybin, 0);
-        }
-      }
-
       h2InterPotEfficiencyMap_[rpId]->SetMinimum(0);
       h2InterPotEfficiencyMap_[rpId]->Write();
       h2InterPotEfficiencyMapMultiRP_[rpId]->SetMinimum(0);
       h2InterPotEfficiencyMapMultiRP_[rpId]->Write();
       h2XiMultiVsXiSingle_[rpId]->Write();
       h2AuxProtonHitDistribution_[rpId]->Write();
+      h2AuxProtonHitDistributionWithNoMultiRP_[rpId]->Write();
 
       h1TxMatch_[rpId]->Write();
       h1TyMatch_[rpId]->Write();

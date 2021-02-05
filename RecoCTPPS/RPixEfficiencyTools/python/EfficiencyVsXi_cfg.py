@@ -227,7 +227,7 @@ process.demo = cms.EDAnalyzer('EfficiencyVsXi_2017',
     useInterPotEfficiency=cms.untracked.bool(options.useInterPotEfficiency),
     useMultiRPProtons=cms.untracked.bool(options.useMultiRPProtons),
     lhcInfoLabel = cms.string(""),
-    producerTag=cms.untracked.string("ReMiniAOD")
+    producerTag=cms.untracked.string("RECO")
 )
 
 process.p = cms.Path(process.demo)

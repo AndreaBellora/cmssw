@@ -275,8 +275,7 @@ void EfficiencyVsXi_2017::analyze(const edm::Event &iEvent,
   // iSetup.get<LHCInfoRcd>().get(lhcInfoLabel_, hLHCInfo);
 
   Handle<reco::ForwardProtonCollection> protons;
-  if (useMultiRPEfficiency_ || useInterpotEfficiency || useMultiRPProtons_) {
-    // if (useMultiRPProtons_) {
+  if (useMultiRPProtons_) {
     iEvent.getByToken(multiRPprotonsToken_, protons);
     apply_apertureCut = true;
   } else {

@@ -131,7 +131,7 @@ process.demo = cms.EDAnalyzer('RefinedEfficiencyTool_2017',
     fiducialXLow=cms.untracked.vdouble(fiducialXLow),
     fiducialYLow=cms.untracked.vdouble(fiducialYLow),
     fiducialYHigh=cms.untracked.vdouble(fiducialYHigh),
-    producerTag=cms.untracked.string("RECO")
+    producerTag=cms.untracked.string("ReMiniAOD")
 
 )
 

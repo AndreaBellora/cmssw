@@ -172,6 +172,7 @@ private:
 
   // output histograms
   std::map<CTPPSPixelDetId, TH2D *> h2AuxProtonHitDistribution_;
+  std::map<CTPPSPixelDetId, TH2D *> h2AuxProtonHitDistributionWithNoMultiRP_;
   std::map<CTPPSPixelDetId, TH2D *> h2InterPotEfficiencyMap_;
   std::map<CTPPSPixelDetId, TH2D *> h2InterPotEfficiencyMapMultiRP_;
   std::map<CTPPSPixelDetId, TH1D *> h1AuxXi_;
@@ -277,6 +278,7 @@ InterpotEfficiency_2018::InterpotEfficiency_2018(
 InterpotEfficiency_2018::~InterpotEfficiency_2018() {
   for (auto &rpId : romanPotIdVector_) {
     delete h2AuxProtonHitDistribution_[rpId];
+    delete h2AuxProtonHitDistributionWithNoMultiRP_[rpId];
     delete h2InterPotEfficiencyMap_[rpId];
     delete h2InterPotEfficiencyMapMultiRP_[rpId];
     delete h1AuxXi_[rpId];
@@ -348,7 +350,8 @@ void InterpotEfficiency_2018::analyze(const edm::Event &iEvent,
     double xi_Tag = proton_Tag.xi();
     int matches = 0;
 
-    if (trackMux_[detId_Tag] > maxTracksInTagPot || trackMux_[detId_Tag] < minTracksInTagPot)
+    if (trackMux_[detId_Tag] > maxTracksInTagPot ||
+        trackMux_[detId_Tag] < minTracksInTagPot)
       continue;
     // Start only from strips
     // if (detId_Tag.station() != 0) // use as Tag only the strips RPs
@@ -375,7 +378,8 @@ void InterpotEfficiency_2018::analyze(const edm::Event &iEvent,
     CTPPSPixelDetId pixelDetId(arm_Probe, station_Probe, rp_Probe);
     CTPPSDetId detId_Probe(pixelDetId.rawId());
 
-    if (trackMux_[detId_Probe] > maxTracksInProbePot || trackMux_[detId_Probe] < minTracksInProbePot)
+    if (trackMux_[detId_Probe] > maxTracksInProbePot ||
+        trackMux_[detId_Probe] < minTracksInProbePot)
       continue;
 
     double deltaZ = Z[detId_Probe] - Z[detId_Tag];
@@ -415,6 +419,14 @@ void InterpotEfficiency_2018::analyze(const edm::Event &iEvent,
                 arm_Probe, station_Probe, rp_Probe),
             nBinsX_total[pixelDetId], &xBinEdges[pixelDetId][0], mapYbins,
             mapYmin, mapYmax);
+        h2AuxProtonHitDistributionWithNoMultiRP_[pixelDetId] = new TH2D(
+            Form("h2ProtonHitExpectedDistributionWithNoMultiRP_arm%i_st%i_rp%i",
+                 arm_Probe, station_Probe, rp_Probe),
+            Form("h2ProtonHitExpectedDistributionWithNoMultiRP_arm%i_st%i_rp%i;"
+                 "x (mm);y (mm)",
+                 arm_Probe, station_Probe, rp_Probe),
+            nBinsX_total[pixelDetId], &xBinEdges[pixelDetId][0], mapYbins,
+            mapYmin, mapYmax);
         h2InterPotEfficiencyMap_[pixelDetId] = new TH2D(
             Form("h2InterPotEfficiencyMap_arm%i_st%i_rp%i", arm_Probe,
                  station_Probe, rp_Probe),
@@ -436,6 +448,13 @@ void InterpotEfficiency_2018::analyze(const edm::Event &iEvent,
             Form(
                 "h2ProtonHitExpectedDistribution_arm%i_st%i_rp%i;x (mm);y (mm)",
                 arm_Probe, station_Probe, rp_Probe),
+            mapXbins, mapXmin, mapXmax, mapYbins, mapYmin, mapYmax);
+        h2AuxProtonHitDistributionWithNoMultiRP_[pixelDetId] = new TH2D(
+            Form("h2ProtonHitExpectedDistributionWithNoMultiRP_arm%i_st%i_rp%i",
+                 arm_Probe, station_Probe, rp_Probe),
+            Form("h2ProtonHitExpectedDistributionWithNoMultiRP_arm%i_st%i_rp%i;"
+                 "x (mm);y (mm)",
+                 arm_Probe, station_Probe, rp_Probe),
             mapXbins, mapXmin, mapXmax, mapYbins, mapYmin, mapYmax);
         h2InterPotEfficiencyMap_[pixelDetId] = new TH2D(
             Form("h2InterPotEfficiencyMap_arm%i_st%i_rp%i", arm_Probe,
@@ -675,6 +694,9 @@ void InterpotEfficiency_2018::analyze(const edm::Event &iEvent,
 
     h2AuxProtonHitDistribution_[pixelDetId]->Fill(expectedTrackX0_Probe,
                                                   expectedTrackY0_Probe);
+    if (multiRPmatchFound == 0)
+      h2AuxProtonHitDistributionWithNoMultiRP_[pixelDetId]->Fill(
+          expectedTrackX0_Probe, expectedTrackY0_Probe);
     h1AuxXi_[pixelDetId]->Fill(xi_Tag);
 
     if (matches > 1) {
@@ -730,7 +752,7 @@ void InterpotEfficiency_2018::endJob() {
 
       h2InterPotEfficiencyMap_[rpId]->Divide(h2InterPotEfficiencyMap_[rpId],
                                              h2AuxProtonHitDistribution_[rpId],
-                                             1., 1.,"B");
+                                             1., 1., "B");
       for (auto i = 1; i < h2InterPotEfficiencyMap_[rpId]->GetNbinsX(); i++) {
         for (auto j = 1; j < h2InterPotEfficiencyMap_[rpId]->GetNbinsY(); j++) {
           double efficiency =
@@ -745,7 +767,7 @@ void InterpotEfficiency_2018::endJob() {
       }
       h2InterPotEfficiencyMap_[rpId]->SetMinimum(0);
       h2InterPotEfficiencyMap_[rpId]->SetMaximum(1);
-      h2InterPotEfficiencyMap_[rpId]->Write();    
+      h2InterPotEfficiencyMap_[rpId]->Write();
 
       TEfficiency TEInterPotEfficiencyMapMultiRP =
           TEfficiency(*h2InterPotEfficiencyMapMultiRP_[rpId],
@@ -759,7 +781,7 @@ void InterpotEfficiency_2018::endJob() {
 
       h2InterPotEfficiencyMapMultiRP_[rpId]->Divide(
           h2InterPotEfficiencyMapMultiRP_[rpId],
-          h2AuxProtonHitDistribution_[rpId], 1., 1.,"B");
+          h2AuxProtonHitDistribution_[rpId], 1., 1., "B");
       h2InterPotEfficiencyMapMultiRP_[rpId]->SetMinimum(0);
       h2InterPotEfficiencyMapMultiRP_[rpId]->SetMaximum(1);
       for (auto i = 1; i < h2InterPotEfficiencyMapMultiRP_[rpId]->GetNbinsX();
@@ -778,7 +800,7 @@ void InterpotEfficiency_2018::endJob() {
       }
       h2InterPotEfficiencyMapMultiRP_[rpId]->Write();
       h2AuxProtonHitDistribution_[rpId]->Write();
-
+      h2AuxProtonHitDistributionWithNoMultiRP_[rpId]->Write(); 
       h1TxMatch_[rpId]->Write();
       h1TyMatch_[rpId]->Write();
       h2XCorrelationMatch_[rpId]->Write();

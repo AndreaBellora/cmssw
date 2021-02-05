@@ -30,7 +30,7 @@ else
 		echo "At the end of the job the output will be saved in OutputFiles/Era${1}.root"
 		echo ""
 		echo "Check the output overview with: root -l 'ViewPlots.C(${1})'"
-		echo "If the analysis goes well Era: ./cleanAndSave.sh ${1}"
+		echo "If the analysis goes well run: ./cleanAndSave.sh ${1}"
 		echo ""
 	fi
 fi

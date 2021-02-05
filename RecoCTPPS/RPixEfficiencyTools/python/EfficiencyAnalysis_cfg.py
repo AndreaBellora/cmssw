@@ -1,6 +1,7 @@
 import FWCore.ParameterSet.Config as cms
 
-process = cms.Process("Demo")
+from Configuration.StandardSequences.Eras import eras
+process = cms.Process("Demo", eras.Run2_2017,eras.run2_miniAOD_devel)
 
 import FWCore.ParameterSet.VarParsing as VarParsing
 process.options = cms.untracked.PSet(
@@ -155,6 +156,13 @@ elif runNumber <= lastRunOfTheYear:
             fiducialYHigh[i] += 1
 elif runNumber > lastRunOfTheYear:
     print("This run doesn't belong to 2018 data taking")
+
+process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_cff')
+from Configuration.AlCa.GlobalTag import GlobalTag
+from CondCore.CondDB.CondDB_cfi import *
+
+# Global tag
+process.GlobalTag = GlobalTag(process.GlobalTag, '106X_dataRun2_v28')
 
 process.demo = cms.EDAnalyzer('EfficiencyTool_2018',
     # outputFileName=cms.untracked.string("RPixAnalysis_RecoLocalTrack_ReferenceRunAfterTS2.root"),

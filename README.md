@@ -1,4 +1,4 @@
-# CMMSW Environment Setup
+# CMSSW Environment Setup
 In the directory where you want to create your CMSSW environment
 ```bash
 cmsrel CMSSW_10_6_24

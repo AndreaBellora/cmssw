@@ -1,0 +1,645 @@
+// -*- C++ -*-
+//
+// Package:    RecoCTPPS/Lumi
+// Class:      LumiAnalyzer
+//
+/**\class LumiAnalyzer LumiAnalyzer.cc
+ RecoCTPPS/Lumi/plugins/LumiAnalyzer.cc
+
+ Description: [one line class summary]
+
+ Implementation:
+                 [Notes on implementation]
+*/
+//
+// Original Author:  Andrea Bellora
+//         Created:  Wed, 07 Jul 2019 09:55:05 GMT
+//
+//
+
+#include <algorithm>
+#include <boost/algorithm/string.hpp>
+#include <exception>
+#include <fstream>
+#include <memory>
+
+#include "FWCore/Framework/interface/Frameworkfwd.h"
+#include "FWCore/Framework/interface/one/EDAnalyzer.h"
+
+#include "FWCore/Framework/interface/Event.h"
+#include "FWCore/Framework/interface/MakerMacros.h"
+
+#include "DataFormats/CTPPSDetId/interface/CTPPSPixelDetId.h"
+
+#include "DataFormats/CTPPSReco/interface/CTPPSLocalTrackLite.h"
+#include "DataFormats/CTPPSReco/interface/CTPPSPixelCluster.h"
+#include "DataFormats/CTPPSReco/interface/CTPPSPixelLocalTrack.h"
+#include "DataFormats/CTPPSReco/interface/CTPPSPixelRecHit.h"
+
+#include "DataFormats/CTPPSReco/interface/CTPPSPixelLocalTrackRecoInfo.h"
+#include "DataFormats/ProtonReco/interface/ForwardProton.h"
+#include "DataFormats/ProtonReco/interface/ForwardProtonFwd.h"
+
+#include "DataFormats/VertexReco/interface/Vertex.h"
+
+#include "FWCore/ParameterSet/interface/ParameterSet.h"
+
+#include <TEfficiency.h>
+#include <TF1.h>
+#include <TFile.h>
+#include <TGraphErrors.h>
+#include <TH1D.h>
+#include <TH2D.h>
+#include <TMath.h>
+#include <TObjArray.h>
+
+using namespace std;
+
+class LumiAnalyzer : public edm::one::EDAnalyzer<edm::one::SharedResources> {
+public:
+  explicit LumiAnalyzer(const edm::ParameterSet &);
+  ~LumiAnalyzer();
+  static void fillDescriptions(edm::ConfigurationDescriptions &descriptions);
+
+private:
+  virtual void beginJob() override;
+  virtual void analyze(const edm::Event &, const edm::EventSetup &) override;
+  virtual void endJob() override;
+  bool Cut(CTPPSLocalTrackLite track);
+  bool CutWithNoNumberOfPoints(CTPPSLocalTrackLite track);
+
+  bool debug_ = false;
+
+  // Data to get
+  edm::EDGetTokenT<reco::ForwardProtonCollection> protonsToken_;
+  edm::EDGetTokenT<edm::DetSetVector<CTPPSPixelLocalTrack>>
+      pixelLocalTrackToken_;
+  edm::EDGetTokenT<edm::DetSetVector<CTPPSPixelRecHit>> pixelRecHitToken_;
+  edm::EDGetTokenT<edm::View<reco::Vertex>> recoVertexToken_;
+
+  // Parameter set
+  string outputFileName_;
+  double maxChi2Prob_;
+  int minNumberOfPlanesForTrack_;
+  int maxNumberOfPlanesForTrack_ = 6;
+  int minTracksPerEvent;
+  int maxTracksPerEvent;
+
+  // Configs
+  vector<uint32_t> listOfArms_ = {0, 1};
+  vector<uint32_t> listOfStations_ = {0, 2};
+  vector<uint32_t> listOfPlanes_ = {0, 1, 2, 3, 4, 5};
+
+  vector<CTPPSPixelDetId> planeIdVector_;
+  vector<CTPPSPixelDetId> romanPotIdVector_;
+
+  int binGroupingX = 1;
+  int binGroupingY = 1;
+
+  int mapXbins_st2 = 200;
+  float mapXmin_st2 = 0. * TMath::Cos(18.4 / 180. * TMath::Pi());
+  float mapXmax_st2 = 30. * TMath::Cos(18.4 / 180. * TMath::Pi());
+  int mapYbins_st2 = 240;
+  float mapYmin_st2 = -16.;
+  float mapYmax_st2 = 8.;
+
+  int mapXbins_st0 = 200;
+  float mapXmin_st0 = 0. * TMath::Cos(18.4 / 180. * TMath::Pi());
+  float mapXmax_st0 = 30. * TMath::Cos(18.4 / 180. * TMath::Pi());
+  int mapYbins_st0 = 240;
+  float mapYmin_st0 = -16.;
+  float mapYmax_st0 = 8.;
+
+  int mapXbins = mapXbins_st0;
+  float mapXmin = mapXmin_st0;
+  float mapXmax = mapXmax_st0;
+  int mapYbins = mapYbins_st0;
+  float mapYmin = mapYmin_st0;
+  float mapYmax = mapYmax_st0;
+
+  double xiBins = 44;
+  double xiMin = 0.0;
+  double xiMax = 0.22;
+  double angleBins = 100;
+  double angleMin = -0.03;
+  double angleMax = 0.03;
+
+  double nRecHitsBins = 100;
+  double nRecHitsMin = 0;
+  double nRecHitsMax = 200;
+
+  int mapRowBins = 160;
+  float mapRowMin = 0;
+  float mapRowMax = 160;
+  int mapColBins = 156;
+  float mapColMin = 0;
+  float mapColMax = 156;
+
+  // Matching parameters
+  // Cuts for 2018 re-MINIAOD
+  double xMatchWindow45 = 4. * 0.16008188;
+  double xMatchMean45 = -0.065194856;
+  double yMatchWindow45 = 4. * 0.1407986;
+  double yMatchMean45 = +0.10973631;
+  double xiMatchWindow45 = 4. * 0.0012403586;
+  double xiMatchMean45 = +3.113062e-5;
+
+  double xMatchWindow56 = 5. * 0.18126434;
+  double xMatchMean56 = +0.073016431;
+  double yMatchWindow56 = 5. * 0.14990802;
+  double yMatchMean56 = +0.064261029;
+  double xiMatchWindow56 = 5. * 0.002046409;
+  double xiMatchMean56 = -1.1852528e-5;
+
+  bool excludeMultipleMatches = true;
+
+  // output histograms
+  // RP hists
+  map<CTPPSPixelDetId, TH1D *> h1ProtonMux_;
+  map<CTPPSPixelDetId, TH1D *> h1NumberOfRecHitsInPot_;
+  map<CTPPSPixelDetId, TH2D *> h2CorrelationNumberOfTracksNearFar_;
+  map<CTPPSPixelDetId, TH2D *> h2CorrelationNumberOfTracksVtx_;
+  map<CTPPSPixelDetId, TH2D *> h2CorrelationNumberOfPotRecHitsVtx_;
+  map<CTPPSPixelDetId, double> avgMuxInLastLumi_;
+  map<CTPPSPixelDetId, TGraph *> gMuxVsVtxAvg_;
+
+  // Plane hists
+  map<CTPPSPixelDetId, TH1D *> h1NumberOfRecHits_;
+
+  // Vertex quantities
+  TH1D *vtxMux_;
+  TH1D *vtxChi2OverNdF_;
+  TH1D *lumis_;
+
+  vector<double> fiducialXLowVector_;
+  vector<double> fiducialXHighVector_;
+  vector<double> fiducialYLowVector_;
+  vector<double> fiducialYHighVector_;
+  map<pair<int, int>, double> fiducialXLow_;
+  map<pair<int, int>, double> fiducialXHigh_;
+  map<pair<int, int>, double> fiducialYLow_;
+  map<pair<int, int>, double> fiducialYHigh_;
+  int recoInfoCut_;
+  int maxProtonsInPixelRP_;
+  long long lastLumiAnalyzed_ = 0;
+  long long eventsAnalyzed_ = 0;
+  long double avgVerticesInLastLumi_ = 0;
+  bool firstEvent_ = true;
+};
+
+LumiAnalyzer::LumiAnalyzer(const edm::ParameterSet &iConfig) {
+  usesResource("TFileService");
+  protonsToken_ = consumes<reco::ForwardProtonCollection>(
+      edm::InputTag("ctppsProtons", "singleRP"));
+  pixelLocalTrackToken_ = consumes<edm::DetSetVector<CTPPSPixelLocalTrack>>(
+      edm::InputTag("ctppsPixelLocalTracks", ""));
+  pixelRecHitToken_ = consumes<edm::DetSetVector<CTPPSPixelRecHit>>(
+      edm::InputTag("ctppsPixelRecHits", ""));
+  recoVertexToken_ = consumes<edm::View<reco::Vertex>>(
+      edm::InputTag("offlinePrimaryVertices"));
+
+  outputFileName_ = iConfig.getUntrackedParameter<string>("outputFileName");
+  minNumberOfPlanesForTrack_ =
+      iConfig.getParameter<int>("minNumberOfPlanesForTrack");
+  maxChi2Prob_ = iConfig.getUntrackedParameter<double>("maxChi2Prob");
+  minTracksPerEvent = iConfig.getParameter<int>("minTracksPerEvent"); // UNUSED!
+  maxTracksPerEvent = iConfig.getParameter<int>("maxTracksPerEvent"); // UNUSED!
+  binGroupingX = iConfig.getUntrackedParameter<int>("binGroupingX");  // UNUSED!
+  binGroupingY = iConfig.getUntrackedParameter<int>("binGroupingY");  // UNUSED!
+  fiducialXLowVector_ =
+      iConfig.getUntrackedParameter<vector<double>>("fiducialXLow");
+  fiducialXHighVector_ =
+      iConfig.getUntrackedParameter<vector<double>>("fiducialXHigh");
+  fiducialYLowVector_ =
+      iConfig.getUntrackedParameter<vector<double>>("fiducialYLow");
+  fiducialYHighVector_ =
+      iConfig.getUntrackedParameter<vector<double>>("fiducialYHigh");
+  fiducialXLow_ = {
+      {pair<int, int>(0, 0), fiducialXLowVector_.at(0)},
+      {pair<int, int>(0, 2), fiducialXLowVector_.at(1)},
+      {pair<int, int>(1, 0), fiducialXLowVector_.at(2)},
+      {pair<int, int>(1, 2), fiducialXLowVector_.at(3)},
+  };
+  fiducialXHigh_ = {
+      {pair<int, int>(0, 0), fiducialXHighVector_.at(0)},
+      {pair<int, int>(0, 2), fiducialXHighVector_.at(1)},
+      {pair<int, int>(1, 0), fiducialXHighVector_.at(2)},
+      {pair<int, int>(1, 2), fiducialXHighVector_.at(3)},
+  };
+  fiducialYLow_ = {
+      {pair<int, int>(0, 0), fiducialYLowVector_.at(0)},
+      {pair<int, int>(0, 2), fiducialYLowVector_.at(1)},
+      {pair<int, int>(1, 0), fiducialYLowVector_.at(2)},
+      {pair<int, int>(1, 2), fiducialYLowVector_.at(3)},
+  };
+  fiducialYHigh_ = {
+      {pair<int, int>(0, 0), fiducialYHighVector_.at(0)},
+      {pair<int, int>(0, 2), fiducialYHighVector_.at(1)},
+      {pair<int, int>(1, 0), fiducialYHighVector_.at(2)},
+      {pair<int, int>(1, 2), fiducialYHighVector_.at(3)},
+  };
+  recoInfoCut_ = iConfig.getUntrackedParameter<int>("recoInfo");
+  maxProtonsInPixelRP_ =
+      iConfig.getUntrackedParameter<int>("maxProtonsInPixelRP");
+  debug_ = iConfig.getUntrackedParameter<bool>("debug");
+}
+
+LumiAnalyzer::~LumiAnalyzer() {
+  for (auto &rpId : romanPotIdVector_) {
+    delete h1ProtonMux_[rpId];
+    delete h1NumberOfRecHitsInPot_[rpId];
+    delete h2CorrelationNumberOfTracksNearFar_[rpId];
+    delete h2CorrelationNumberOfTracksVtx_[rpId];
+    delete h2CorrelationNumberOfPotRecHitsVtx_[rpId];
+    delete gMuxVsVtxAvg_[rpId];
+  }
+
+  for (auto &planeId : planeIdVector_) {
+    delete h1NumberOfRecHits_[planeId];
+  }
+
+  delete vtxMux_;
+  delete vtxChi2OverNdF_;
+  delete lumis_;
+}
+
+void LumiAnalyzer::fillDescriptions(
+    edm::ConfigurationDescriptions &descriptions) {
+  edm::ParameterSetDescription desc;
+  desc.setUnknown();
+  descriptions.addDefault(desc);
+}
+
+void LumiAnalyzer::beginJob() {
+  // Book general plots
+  vtxMux_ = new TH1D("vtxMux", "vtxMux", 150, 0, 150);
+  vtxChi2OverNdF_ = new TH1D("vtxChi2OverNdF", "vtxChi2OverNdF", 100, 0, 10);
+  lumis_ = new TH1D("lumisections", "lumis", 2000, 0, 2000);
+}
+
+void LumiAnalyzer::analyze(const edm::Event &iEvent,
+                           const edm::EventSetup &iSetup) {
+  using namespace edm;
+
+  if (iEvent.id().luminosityBlock() != lastLumiAnalyzed_) {
+    if (!firstEvent_) {
+      avgVerticesInLastLumi_ /= eventsAnalyzed_;
+      for (auto &i : avgMuxInLastLumi_) {
+        gMuxVsVtxAvg_[i.first]->SetPoint(gMuxVsVtxAvg_[i.first]->GetN(),
+                                         i.second / eventsAnalyzed_,
+                                         avgVerticesInLastLumi_);
+      }
+    }
+
+    lastLumiAnalyzed_ = iEvent.id().luminosityBlock();
+    eventsAnalyzed_ = 0;
+    firstEvent_ = false;
+  }
+  // Get collections
+  Handle<reco::ForwardProtonCollection> protons;
+  iEvent.getByToken(protonsToken_, protons);
+  Handle<edm::DetSetVector<CTPPSPixelLocalTrack>> pixelTracks;
+  iEvent.getByToken(pixelLocalTrackToken_, pixelTracks);
+  Handle<edm::DetSetVector<CTPPSPixelRecHit>> pixelRecHits;
+  iEvent.getByToken(pixelRecHitToken_, pixelRecHits);
+  edm::Handle<edm::View<reco::Vertex>> recoVertexColl;
+  iEvent.getByToken(recoVertexToken_, recoVertexColl);
+
+  // Compute proton mux
+  std::map<CTPPSPixelDetId, int> mux;
+  std::map<CTPPSPixelDetId, int> recHitsInPot;
+  int n_vertices = 0;
+
+  // Handle vertices
+  for (unsigned int i = 0;
+       i < recoVertexColl->size() && recoVertexColl->size() < 150; ++i) {
+    const edm::Ptr<reco::Vertex> vertex = recoVertexColl->ptrAt(i);
+    if (fabs(vertex->z()) < 15 && vertex->isValid()) {
+      n_vertices++;
+      vtxChi2OverNdF_->Fill(vertex->chi2() / vertex->ndof());
+    }
+  }
+  vtxMux_->Fill(n_vertices);
+  if (eventsAnalyzed_ == 0)
+    avgVerticesInLastLumi_ = n_vertices;
+  else
+    avgVerticesInLastLumi_ += n_vertices;
+
+  // get singleRP protons = tracks
+  for (auto &proton : *protons) {
+    if (!proton.validFit() ||
+        proton.method() != reco::ForwardProton::ReconstructionMethod::singleRP)
+      continue;
+    CTPPSLocalTrackLite track = *(proton.contributingLocalTracks().at(0));
+    CTPPSDetId detId = CTPPSDetId(track.getRPId());
+    int arm = detId.arm();
+    int station = detId.station();
+    int rp = detId.rp();
+    CTPPSPixelDetId pixelDetId(detId.rawId());
+    if (h1ProtonMux_.find(pixelDetId) == h1ProtonMux_.end()) {
+
+      if (find(romanPotIdVector_.begin(), romanPotIdVector_.end(),
+               pixelDetId) == romanPotIdVector_.end())
+        romanPotIdVector_.push_back(pixelDetId);
+
+      h1ProtonMux_[pixelDetId] = new TH1D(
+          Form("h1ProtonMux_arm%i_st%i_rp%i", arm, station, rp),
+          Form("h1ProtonMux_arm%i_st%i_rp%i;Protons", arm, station, rp), 11,
+          -0.5, 10.5);
+      gMuxVsVtxAvg_[pixelDetId] = new TGraph();
+      gMuxVsVtxAvg_[pixelDetId]->SetNameTitle(
+          "MuxVsVtxAvg", Form("MuxVsVtxAvg;Avg number of tracks in "
+                              "arm%i_st%i;Avg number of vertices",
+                              arm, station));
+      gMuxVsVtxAvg_[pixelDetId]->SetMarkerStyle(8);
+    }
+    mux[pixelDetId]++;
+  }
+
+  for (auto &pixelDetId : romanPotIdVector_) {
+    h1ProtonMux_[pixelDetId]->Fill(mux[pixelDetId]);
+    if (eventsAnalyzed_ == 0)
+      avgMuxInLastLumi_[pixelDetId] = mux[pixelDetId];
+    else
+      avgMuxInLastLumi_[pixelDetId] += mux[pixelDetId];
+  }
+
+  // Analyze rechits
+  for (auto &recHitDs : *pixelRecHits) {
+    // Get the id of the plane
+    CTPPSPixelDetId recHitId = CTPPSPixelDetId(recHitDs.id);
+
+    // Make it the RP id
+    CTPPSPixelDetId pixelDetId = recHitId;
+    pixelDetId.setPlane(0);
+
+    int arm = recHitId.arm();
+    int station = recHitId.station();
+    int rp = recHitId.rp();
+    int plane = recHitId.plane();
+
+    // Book missing RP hists
+    if (h1NumberOfRecHitsInPot_.find(pixelDetId) ==
+        h1NumberOfRecHitsInPot_.end()) {
+      // If the id is not already in the vector, add it, and book the hist
+      // that previously was not booked
+      if (find(romanPotIdVector_.begin(), romanPotIdVector_.end(),
+               pixelDetId) == romanPotIdVector_.end()) {
+        romanPotIdVector_.push_back(pixelDetId);
+        h1ProtonMux_[pixelDetId] = new TH1D(
+            Form("h1ProtonMux_arm%i_st%i_rp%i", arm, station, rp),
+            Form("h1ProtonMux_arm%i_st%i_rp%i;Protons", arm, station, rp), 11,
+            -0.5, 10.5);
+      }
+      h1NumberOfRecHitsInPot_[pixelDetId] = new TH1D(
+          Form("h1NumberOfRecHitsInPot_arm%i_st%i_rp%i", arm, station, rp),
+          Form("h1NumberOfRecHitsInPot_arm%i_st%i_rp%i;# of RecHits", arm,
+               station, rp),
+          nRecHitsBins, nRecHitsMin, nRecHitsMax);
+      h2CorrelationNumberOfTracksNearFar_[pixelDetId] = new TH2D(
+          Form("h2CorrelationNumberOfTracksNearFar_arm%i_st%i_rp%i", arm,
+               station, rp),
+          Form("h2CorrelationNumberOfTracksNearFar_arm%i_st%i_rp%i;#"
+               " of Tracks arm%i_st%i;# of Tracks arm%i_st%i;",
+               arm, station, rp, arm, station, arm, ((station == 0) ? 2 : 0)),
+          11, 0, 11, 11, 0, 11);
+      h2CorrelationNumberOfTracksVtx_[pixelDetId] =
+          new TH2D(Form("h2CorrelationNumberOfTracksVtx_arm%i_st%i_rp%i", arm,
+                        station, rp),
+                   Form("h2CorrelationNumberOfTracksVtx_arm%i_st%i_rp%i;"
+                        "Number of tracks arm%i_st%i;Number of vertices;",
+                        arm, station, rp, arm, station),
+                   11, 0, 11, 150, 0, 150);
+      h2CorrelationNumberOfPotRecHitsVtx_[pixelDetId] =
+          new TH2D(Form("h2CorrelationNumberOfPotRecHitsVtx_arm%i_st%i_rp%i",
+                        arm, station, rp),
+                   Form("h2CorrelationNumberOfPotRecHitsVtx_arm%i_st%i_rp%i;"
+                        "Number of rechits in arm%i_st%i;Number of vertices;",
+                        arm, station, rp, arm, station),
+                   60, 0, 60, 150, 0, 150);
+    }
+
+    // Book missing plane hists
+    if (h1NumberOfRecHits_.find(recHitId) == h1NumberOfRecHits_.end()) {
+      planeIdVector_.push_back(recHitId);
+      TString planeTag = Form("arm%i_st%i_rp%i_pl%i", arm, station, rp, plane);
+      h1NumberOfRecHits_[recHitId] =
+          new TH1D("h1NumberOfRecHits_" + planeTag,
+                   "h1NumberOfRecHits_" + planeTag + ";Number of RecHits",
+                   nRecHitsBins, nRecHitsMin, nRecHitsMax);
+    }
+
+    recHitsInPot[pixelDetId] += recHitDs.data.size();
+    h1NumberOfRecHits_[recHitId]->Fill(recHitDs.data.size());
+  }
+
+  for (auto &pixelDetId : romanPotIdVector_) {
+    CTPPSPixelDetId otherStationId = CTPPSPixelDetId(
+        pixelDetId.arm(), ((pixelDetId.station() == 0) ? 2 : 0), 3);
+
+    h1NumberOfRecHitsInPot_[pixelDetId]->Fill(recHitsInPot[pixelDetId]);
+    h2CorrelationNumberOfTracksNearFar_[pixelDetId]->Fill(mux[pixelDetId],
+                                                          mux[otherStationId]);
+    h2CorrelationNumberOfTracksVtx_[pixelDetId]->Fill(mux[pixelDetId],
+                                                      n_vertices);
+    h2CorrelationNumberOfPotRecHitsVtx_[pixelDetId]->Fill(
+        recHitsInPot[pixelDetId], n_vertices);
+  }
+  lumis_->Fill(iEvent.id().luminosityBlock());
+
+  eventsAnalyzed_++;
+}
+
+void LumiAnalyzer::endJob() {
+  TFile *outputFile_ = new TFile(outputFileName_.data(), "RECREATE");
+  for (auto &rpId : romanPotIdVector_) {
+    uint32_t arm = rpId.arm();
+    uint32_t station = rpId.station();
+    string rpDirName = Form("Arm%i_st%i_rp3", arm, station);
+    outputFile_->mkdir(rpDirName.data());
+    outputFile_->cd(rpDirName.data());
+
+    if (h1ProtonMux_.find(rpId) != h1ProtonMux_.end()) {
+      h1ProtonMux_[rpId]->Write();
+    }
+    if (h1NumberOfRecHitsInPot_.find(rpId) != h1NumberOfRecHitsInPot_.end()) {
+      h1NumberOfRecHitsInPot_[rpId]->Write();
+      h2CorrelationNumberOfTracksNearFar_[rpId]->Write();
+      h2CorrelationNumberOfTracksVtx_[rpId]->Write();
+      h2CorrelationNumberOfPotRecHitsVtx_[rpId]->Write();
+      gMuxVsVtxAvg_[rpId]->Write();
+    }
+  }
+
+  for (auto &planeId : planeIdVector_) {
+    uint32_t arm = planeId.arm();
+    uint32_t station = planeId.station();
+    uint32_t plane = planeId.plane();
+
+    string planeDirName = Form("Arm%i_st%i_rp3/Arm%i_st%i_rp3_pl%i", arm,
+                               station, arm, station, plane);
+    outputFile_->mkdir(planeDirName.data());
+    outputFile_->cd(planeDirName.data());
+
+    if (h1NumberOfRecHits_.find(planeId) != h1NumberOfRecHits_.end()) {
+      h1NumberOfRecHits_[planeId]->Write();
+    }
+  }
+
+  outputFile_->cd();
+  vtxMux_->Write();
+  vtxChi2OverNdF_->Write();
+  lumis_->Write();
+
+  outputFile_->Close();
+  delete outputFile_;
+}
+
+bool LumiAnalyzer::Cut(CTPPSLocalTrackLite track) {
+  CTPPSDetId detId = CTPPSDetId(track.getRPId());
+  uint32_t arm = detId.arm();
+  uint32_t station = detId.station();
+  uint32_t ndf = 2 * track.getNumberOfPointsUsedForFit() - 4;
+  double x = track.getX();
+  double y = track.getY();
+  if (station == 0) {
+    double pixelX0_rotated = x * TMath::Cos((-8. / 180.) * TMath::Pi()) -
+                             y * TMath::Sin((-8. / 180.) * TMath::Pi());
+    double pixelY0_rotated = x * TMath::Sin((-8. / 180.) * TMath::Pi()) +
+                             y * TMath::Cos((-8. / 180.) * TMath::Pi());
+    x = pixelX0_rotated;
+    y = pixelY0_rotated;
+  }
+
+  double maxTx = 0.03;
+  double maxTy = 0.04;
+  double maxChi2 = TMath::ChisquareQuantile(maxChi2Prob_, ndf);
+  if (station == 2) {
+    if (debug_) {
+      if (track.getChiSquaredOverNDF() * ndf > maxChi2)
+        cout << "Chi2 cut not passed" << endl;
+      if (TMath::Abs(track.getTx()) > maxTx)
+        cout << "maxTx cut not passed" << endl;
+      if (TMath::Abs(track.getTy()) > maxTy)
+        cout << "maxTy cut not passed" << endl;
+      if (track.getNumberOfPointsUsedForFit() < minNumberOfPlanesForTrack_)
+        cout << "Too few planes for track" << endl;
+      if (track.getNumberOfPointsUsedForFit() > maxNumberOfPlanesForTrack_)
+        cout << "Too many planes for track" << endl;
+      if (y > fiducialYHigh_[pair<int, int>(arm, station)])
+        cout << "fiducialYHigh cut not passed" << endl;
+      if (y < fiducialYLow_[pair<int, int>(arm, station)])
+        cout << "fiducialYLow cut not passed" << endl;
+      if (x < fiducialXLow_[pair<int, int>(arm, station)])
+        cout << "fiducialXLow cut not passed" << endl;
+    }
+    if (TMath::Abs(track.getTx()) > maxTx ||
+        TMath::Abs(track.getTy()) > maxTy ||
+        track.getChiSquaredOverNDF() * ndf > maxChi2 ||
+        track.getNumberOfPointsUsedForFit() < minNumberOfPlanesForTrack_ ||
+        track.getNumberOfPointsUsedForFit() > maxNumberOfPlanesForTrack_ ||
+        y > fiducialYHigh_[pair<int, int>(arm, station)] ||
+        y < fiducialYLow_[pair<int, int>(arm, station)] ||
+        x < fiducialXLow_[pair<int, int>(arm, station)])
+      return true;
+    else {
+      if (recoInfoCut_ != 5) {
+        if (recoInfoCut_ != -1) {
+          if ((int)track.getPixelTrackRecoInfo() != recoInfoCut_)
+            return true;
+          else
+            return false;
+        } else {
+          if ((int)track.getPixelTrackRecoInfo() != 0 &&
+              (int)track.getPixelTrackRecoInfo() != 2)
+            return true;
+          else
+            return false;
+        }
+      } else
+        return false;
+    }
+  } else {
+    if (station == 0) {
+      if (TMath::Abs(track.getTx()) > maxTx ||
+          TMath::Abs(track.getTy()) > maxTy)
+        return true;
+      else
+        return false;
+    } else
+      throw "Station is neither 0 or 2!!!";
+  }
+}
+
+bool LumiAnalyzer::CutWithNoNumberOfPoints(CTPPSLocalTrackLite track) {
+  CTPPSDetId detId = CTPPSDetId(track.getRPId());
+  uint32_t arm = detId.arm();
+  uint32_t station = detId.station();
+  uint32_t ndf = 2 * track.getNumberOfPointsUsedForFit() - 4;
+  double x = track.getX();
+  double y = track.getY();
+  if (station == 0) {
+    double pixelX0_rotated = x * TMath::Cos((-8. / 180.) * TMath::Pi()) -
+                             y * TMath::Sin((-8. / 180.) * TMath::Pi());
+    double pixelY0_rotated = x * TMath::Sin((-8. / 180.) * TMath::Pi()) +
+                             y * TMath::Cos((-8. / 180.) * TMath::Pi());
+    x = pixelX0_rotated;
+    y = pixelY0_rotated;
+  }
+
+  double maxTx = 0.03;
+  double maxTy = 0.04;
+  double maxChi2 = TMath::ChisquareQuantile(maxChi2Prob_, ndf);
+  if (station == 2) {
+    if (debug_) {
+      if (track.getChiSquaredOverNDF() * ndf > maxChi2)
+        cout << "Chi2 cut not passed" << endl;
+      if (TMath::Abs(track.getTx()) > maxTx)
+        cout << "maxTx cut not passed" << endl;
+      if (TMath::Abs(track.getTy()) > maxTy)
+        cout << "maxTy cut not passed" << endl;
+      if (y > fiducialYHigh_[pair<int, int>(arm, station)])
+        cout << "fiducialYHigh cut not passed" << endl;
+      if (y < fiducialYLow_[pair<int, int>(arm, station)])
+        cout << "fiducialYLow cut not passed" << endl;
+      if (x < fiducialXLow_[pair<int, int>(arm, station)])
+        cout << "fiducialXLow cut not passed" << endl;
+    }
+    if (TMath::Abs(track.getTx()) > maxTx ||
+        TMath::Abs(track.getTy()) > maxTy ||
+        track.getChiSquaredOverNDF() * ndf > maxChi2 ||
+        y > fiducialYHigh_[pair<int, int>(arm, station)] ||
+        y < fiducialYLow_[pair<int, int>(arm, station)] ||
+        x < fiducialXLow_[pair<int, int>(arm, station)])
+      return true;
+    else {
+      if (recoInfoCut_ != 5) {
+        if (recoInfoCut_ != -1) {
+          if ((int)track.getPixelTrackRecoInfo() != recoInfoCut_)
+            return true;
+          else
+            return false;
+        } else {
+          if ((int)track.getPixelTrackRecoInfo() != 0 &&
+              (int)track.getPixelTrackRecoInfo() != 2)
+            return true;
+          else
+            return false;
+        }
+      } else
+        return false;
+    }
+  } else {
+    if (station == 0) {
+      if (TMath::Abs(track.getTx()) > maxTx ||
+          TMath::Abs(track.getTy()) > maxTy)
+        return true;
+      else
+        return false;
+    } else
+      throw "Station is neither 0 or 2!!!";
+  }
+}
+
+// define this as a plug-in
+DEFINE_FWK_MODULE(LumiAnalyzer);

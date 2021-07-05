@@ -21,6 +21,6 @@ process.out = cms.OutputModule("PoolOutputModule",
 )
 
 process.e = cms.EndPath(process.out)
-process.PixelSLinkDataInputSource.fileNames = ['rfio:/castor/cern.ch/cms/store/TAC/PIXEL/FPIX/HC+Z1/SCurve_565.dmp']
+process.PixelSLinkDataInputSource.fileNames = ['file:/afs/cern.ch/user/a/abellora/workarea/Work/CT-PPS/POStoCMSSW/CMSSW_11_3_0/src/IORawData/SiPixelInputSources/test/PixelAlive_1463_548.dmp']
 
 
